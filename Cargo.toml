@@ -1,0 +1,11 @@
+[package]
+name = "illuminator"
+version = "0.1.0"
+edition = "2024"
+authors = ["waizui <lch01234@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/waizui/illuminator"
+readme = "README.md"
+description = "Reserved for a tracer"
+
+[dependencies]
