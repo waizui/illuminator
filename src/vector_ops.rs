@@ -6,7 +6,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Sub for Vector<T, N, D> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] - rhs.raw[i]);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
@@ -14,7 +14,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Sub<T> for Vector<T, N, D> {
     type Output = Self;
     fn sub(self, rhs: T) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] - rhs);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
@@ -22,7 +22,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Add for Vector<T, N, D> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] + rhs.raw[i]);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
@@ -30,7 +30,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Add<T> for Vector<T, N, D> {
     type Output = Self;
     fn add(self, rhs: T) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] + rhs);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
@@ -38,7 +38,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Mul for Vector<T, N, D> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] * rhs.raw[i]);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
@@ -46,7 +46,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Mul<T> for Vector<T, N, D> {
     type Output = Self;
     fn mul(self, rhs: T) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] * rhs);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
@@ -54,7 +54,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Div for Vector<T, N, D> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] / rhs.raw[i]);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
@@ -62,7 +62,7 @@ impl<T: Num + Copy, const N: usize, const D: usize> Div<T> for Vector<T, N, D> {
     type Output = Self;
     fn div(self, rhs: T) -> Self::Output {
         let re: [T; N] = std::array::from_fn(|i| self.raw[i] / rhs);
-        Vector::new(&re, &[N])
+        Vector::new(&re, &self.shape)
     }
 }
 
