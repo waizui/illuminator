@@ -9,3 +9,4 @@ readme = "README.md"
 description = "Reserved for a tracer"
 
 [dependencies]
+num-traits = "0.2.19"
