@@ -1,17 +1,27 @@
 #[macro_export]
 macro_rules! tensor {
+
+    ([$($val:expr),*] ; $($dim:expr),+) => {{
+        const N: usize = $crate::tensor!(@size $($dim),+);
+        let arr = [$($val),*];
+        let shape = [$($dim),+];
+        Tensor::<_, N>::new(&arr, &shape)
+    }};
+
     ($val:expr ; $($dim:expr),+) => {{
-        const N: usize = $crate::tensor!(@multiply $($dim),+);
+        const N: usize = $crate::tensor!(@size $($dim),+);
         let arr = [$val; N];
         let shape = [$($dim),+];
         Tensor::<_, N>::new(&arr, &shape)
     }};
 
-    (@multiply $dim:expr) => {
+    (@size $dim:expr) => {
         $dim
     };
 
-    (@multiply $dim:expr, $($rest:expr),+) => {
-        $dim * $crate::tensor!(@multiply $($rest),+)
+    (@size $dim:expr, $($rest:expr),+) => {
+        $dim * $crate::tensor!(@size $($rest),+)
     };
+
 }
+
