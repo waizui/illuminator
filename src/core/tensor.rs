@@ -1,23 +1,23 @@
-use std::ops::Index;
 use num_traits::Num;
+use std::{iter::zip, ops::Index};
 
 const MAX_DIM: usize = 4;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TensorShape {
-    raw: usize,
+    raw_shape: usize,
 }
 
 impl From<usize> for TensorShape {
     fn from(value: usize) -> Self {
-        TensorShape { raw: value }
+        TensorShape { raw_shape: value }
     }
 }
 
 impl From<&[usize]> for TensorShape {
     fn from(value: &[usize]) -> Self {
         if value.len() > MAX_DIM {
-            panic!("Only {} dimension tensor supported.", MAX_DIM);
+            panic!("Only {MAX_DIM} dimension tensor supported.");
         }
 
         let mut raw = 0;
@@ -27,19 +27,36 @@ impl From<&[usize]> for TensorShape {
             }
             raw |= (s & 0xFF) << ((MAX_DIM - 1 - i) * 8);
         }
-        TensorShape { raw }
+        TensorShape { raw_shape: raw }
     }
 }
 
 impl TensorShape {
     pub fn get(&self, dim: usize) -> usize {
         let shift = (MAX_DIM - 1 - dim) * 8;
-        (self.raw & (0xFF << shift)) >> shift
+        (self.raw_shape & (0xFF << shift)) >> shift
     }
 
     /// to flatten index
     pub fn to_index(&self, index: &[usize]) -> usize {
-        todo!()
+        let mut real_i = 0usize;
+        for (dim, &i) in index.iter().enumerate() {
+            real_i += i * self.stride(dim);
+        }
+        real_i
+    }
+
+    fn stride(&self, dim: usize) -> usize {
+        let mut acc = 1;
+        for i in dim..MAX_DIM - 1 {
+            let next = self.get(i + 1);
+            if next == 0 {
+                break;
+            }
+
+            acc *= self.get(i);
+        }
+        acc
     }
 }
 
@@ -54,13 +71,13 @@ impl<T: Num + Copy, const N: usize> Tensor<T, N> {
     pub fn new(arr: &[T], shape: &[usize]) -> Self {
         let count: usize = shape.iter().fold(1, |acc, x| {
             if *x > 0xFF {
-                panic!("Dimension limit is 0-255, now:{}", x);
+                panic!("Dimension limit is 0-255, now:{x}");
             }
             acc * x
         });
 
         if count > N {
-            panic!("Elements count:{} must less than {}.", count, N);
+            panic!("Elements count:{count} must less than {N}.");
         }
 
         let raw = std::array::from_fn(|i| arr[i]);
@@ -75,8 +92,12 @@ where
 {
     type Output = T;
     fn index(&self, index: &[usize]) -> &Self::Output {
-        //TODO: impl
-        &self.raw[0]
+        if index.len() > MAX_DIM {
+            panic!("Only {MAX_DIM} dimension tensor supported.");
+        }
+
+        let real_i = self.shape.to_index(index);
+        &self.raw[real_i]
     }
 }
 
@@ -107,4 +128,12 @@ fn test_index() {
 
     let i = &[0; 4];
     assert_eq!(t[i], 1.);
+
+    let i = &[0, 0, 0, 3];
+    assert_eq!(t[i], 1.);
+
+    let t = tensor!([1,2,3,4,5,6,7,8,9];3,3);
+    for (i, j) in zip(0..2usize, 0..2usize) {
+        assert_eq!(t[&[i, j]], i * 3 + j + 1);
+    }
 }

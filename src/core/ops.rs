@@ -132,7 +132,7 @@ fn test_sub() {
 }
 
 #[test]
-fn test_scele() {
+fn test_scale() {
     use crate::tensor;
     let fv = tensor!(1.; 3);
     let fv2 = fv.scale(fv);
