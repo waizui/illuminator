@@ -106,10 +106,9 @@ fn test_shape() {
     use crate::tensor;
     let t = tensor!(1.;1,2,3,4);
 
-    assert_eq!(t.shape.get(0), 1);
-    assert_eq!(t.shape.get(1), 2);
-    assert_eq!(t.shape.get(2), 3);
-    assert_eq!(t.shape.get(3), 4);
+    for i in 0..4 {
+        assert_eq!(t.shape.get(i), i + 1);
+    }
 
     let t = tensor!([1,2,3,4];2,1,2);
     assert_eq!(t.shape.get(0), 2);

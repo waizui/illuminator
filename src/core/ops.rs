@@ -2,11 +2,6 @@ use crate::core::tensor::Tensor;
 use num_traits::Num;
 use std::ops::{Add, Div, Mul, Sub};
 
-pub trait Scale<T = Self> {
-    type Output;
-    fn scale(&self, rhs: T) -> Self::Output;
-}
-
 impl<T: Num + Copy, const N: usize> Sub for Tensor<T, N> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
@@ -51,9 +46,9 @@ impl<T: Num + Copy, const N: usize> Add<T> for Tensor<T, N> {
     }
 }
 
-impl<T: Num + Copy, const N: usize> Scale for Tensor<T, N> {
+impl<T: Num + Copy, const N: usize> Mul for Tensor<T, N> {
     type Output = Self;
-    fn scale(&self, rhs: Self) -> Self {
+    fn mul(self, rhs: Self) -> Self::Output {
         let raw: [T; N] = std::array::from_fn(|i| self.raw[i] * rhs.raw[i]);
         Tensor {
             raw,
@@ -62,24 +57,14 @@ impl<T: Num + Copy, const N: usize> Scale for Tensor<T, N> {
     }
 }
 
-impl<T: Num + Copy, const N: usize> Scale<T> for Tensor<T, N> {
+impl<T: Num + Copy, const N: usize> Mul<T> for Tensor<T, N> {
     type Output = Self;
-    fn scale(&self, rhs: T) -> Self {
+    fn mul(self, rhs: T) -> Self::Output {
         let raw: [T; N] = std::array::from_fn(|i| self.raw[i] * rhs);
         Tensor {
             raw,
             shape: self.shape,
         }
-    }
-}
-
-impl<T, const NL: usize, const NR: usize> Mul<Tensor<T, NR>> for Tensor<T, NL>
-where
-    T: Num + Copy,
-{
-    type Output = Self;
-    fn mul(self, rhs: Tensor<T, NR>) -> Self::Output {
-        todo!()
     }
 }
 
@@ -89,11 +74,24 @@ where
 {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
-        todo!()
+        let raw: [T; N] = std::array::from_fn(|i| self.raw[i] / rhs.raw[i]);
+        Tensor {
+            raw,
+            shape: self.shape,
+        }
     }
 }
 
-
+impl<T: Num + Copy, const N: usize> Div<T> for Tensor<T, N> {
+    type Output = Self;
+    fn div(self, rhs: T) -> Self::Output {
+        let raw: [T; N] = std::array::from_fn(|i| self.raw[i] / rhs);
+        Tensor {
+            raw,
+            shape: self.shape,
+        }
+    }
+}
 
 #[test]
 fn test_add() {
@@ -110,6 +108,7 @@ fn test_add() {
     assert_eq!(iv2.raw, [2; 3]);
 
     let iv3 = iv + 1;
+
     assert_eq!(iv3.raw, [2; 3]);
 }
 
@@ -132,25 +131,37 @@ fn test_sub() {
 }
 
 #[test]
-fn test_scale() {
+fn test_mul() {
     use crate::tensor;
     let fv = tensor!(1.; 3);
-    let fv2 = fv.scale(fv);
+    let fv2 = fv * fv;
     assert_eq!(fv2.raw, [1.; 3]);
 
-    let fv3 = fv.scale(1.);
+    let fv3 = fv * 1.;
     assert_eq!(fv3.raw, [1.; 3]);
 
     let iv = tensor!(1; 3);
-    let iv2 = iv.scale(iv);
+    let iv2 = iv * iv;
     assert_eq!(iv2.raw, [1; 3]);
 
-    let iv3 = iv.scale(1);
+    let iv3 = iv * 1;
     assert_eq!(iv3.raw, [1; 3]);
 }
 
 #[test]
-fn test_mul() {}
+fn test_div() {
+    use crate::tensor;
+    let fv = tensor!(2.; 3);
+    let fv2 = fv / fv;
+    assert_eq!(fv2.raw, [1.; 3]);
 
-#[test]
-fn test_div() {}
+    let fv3 = fv / 2.;
+    assert_eq!(fv3.raw, [1.; 3]);
+
+    let iv = tensor!(2; 3);
+    let iv2 = iv / iv;
+    assert_eq!(iv2.raw, [1; 3]);
+
+    let iv3 = iv / 2;
+    assert_eq!(iv3.raw, [1; 3]);
+}
