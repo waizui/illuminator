@@ -1,6 +1,6 @@
-use crate::core::tensor::Tensor;
+use crate::core::tensor::{MAX_DIM, Tensor};
 use num_traits::Num;
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Index, Mul, Neg, Sub};
 
 impl<T: Num + Copy, const N: usize> Sub for Tensor<T, N> {
     type Output = Self;
@@ -93,6 +93,23 @@ impl<T: Num + Copy, const N: usize> Div<T> for Tensor<T, N> {
     }
 }
 
+impl<T, const N: usize> Index<&[usize]> for Tensor<T, N>
+where
+    T: Num + Copy,
+{
+    type Output = T;
+    fn index(&self, index: &[usize]) -> &Self::Output {
+        assert!(
+            index.len() <= MAX_DIM,
+            "Only {MAX_DIM} dimension tensor supported."
+        );
+
+        let real_i = self.shape.to_index(index);
+        &self.raw[real_i]
+    }
+}
+
+
 #[test]
 fn test_add() {
     use crate::tensor;
@@ -164,4 +181,22 @@ fn test_div() {
 
     let iv3 = iv / 2;
     assert_eq!(iv3.raw, [1; 3]);
+}
+
+#[test]
+fn test_index() {
+    use crate::tensor;
+    use std::iter::zip;
+    let t = tensor!(1.;1,2,3,4);
+
+    let i = &[0; 4];
+    assert_eq!(t[i], 1.);
+
+    let i = &[0, 0, 0, 3];
+    assert_eq!(t[i], 1.);
+
+    let t = tensor!([1,2,3,4,5,6,7,8,9];3,3);
+    for (i, j) in zip(0..2usize, 0..2usize) {
+        assert_eq!(t[&[i, j]], i * 3 + j + 1);
+    }
 }

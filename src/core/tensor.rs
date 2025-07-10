@@ -1,34 +1,10 @@
 use num_traits::Num;
-use std::{ops::Index, usize};
 
-const MAX_DIM: usize = 4;
+pub const MAX_DIM: usize = 4;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TensorShape {
     raw_shape: usize,
-}
-
-impl From<usize> for TensorShape {
-    fn from(value: usize) -> Self {
-        TensorShape { raw_shape: value }
-    }
-}
-
-impl From<&[usize]> for TensorShape {
-    fn from(value: &[usize]) -> Self {
-        if value.len() > MAX_DIM {
-            panic!("Only {MAX_DIM} dimension tensor supported.");
-        }
-
-        let mut raw = 0;
-        for (i, &s) in value.iter().enumerate() {
-            if s == 0 {
-                break;
-            }
-            raw |= (s & 0xFF) << ((MAX_DIM - 1 - i) * 8);
-        }
-        TensorShape { raw_shape: raw }
-    }
 }
 
 impl TensorShape {
@@ -46,21 +22,51 @@ impl TensorShape {
         real_i
     }
 
+    pub fn size(&self) -> usize {
+        for i in 0..MAX_DIM {
+            if self.get(i) == 0 {
+                return i;
+            }
+        }
+
+        MAX_DIM
+    }
+
     fn stride(&self, dim: usize) -> usize {
         let mut acc = 1;
-        for i in dim..MAX_DIM - 1 {
-            let next = self.get(i + 1);
-            if next == 0 {
-                break;
-            }
-
+        for i in dim..self.size() - 1 {
             acc *= self.get(i);
         }
         acc
     }
 }
 
+impl From<usize> for TensorShape {
+    fn from(value: usize) -> Self {
+        TensorShape { raw_shape: value }
+    }
+}
+
+impl From<&[usize]> for TensorShape {
+    fn from(value: &[usize]) -> Self {
+        assert!(
+            value.len() <= MAX_DIM,
+            "Only {MAX_DIM} dimension tensor supported."
+        );
+
+        let mut raw = 0;
+        for (i, &s) in value.iter().enumerate() {
+            if s == 0 {
+                break;
+            }
+            raw |= (s & 0xFF) << ((MAX_DIM - 1 - i) * 8);
+        }
+        TensorShape { raw_shape: raw }
+    }
+}
+
 /// simple stack-alloc tensor
+/// sadlly 3 floats array will use ptr instead of registers: https://mcyoung.xyz/2024/04/17/calling-convention/
 #[derive(Clone, Copy, Debug)]
 pub struct Tensor<T: Num + Copy, const N: usize> {
     pub raw: [T; N],
@@ -69,16 +75,11 @@ pub struct Tensor<T: Num + Copy, const N: usize> {
 
 impl<T: Num + Copy, const N: usize> Tensor<T, N> {
     pub fn new(arr: &[T], shape: &[usize]) -> Self {
-        let count: usize = shape.iter().fold(1, |acc, x| {
-            if *x > 0xFF {
-                panic!("Dimension limit is 0-255, now:{x}");
-            }
+        let count: usize = shape.iter().fold(1, |acc, &x| {
+            assert!(x < 0xFF, "Dimension limit is 0-255, now:{x}");
             acc * x
         });
-
-        if count > N {
-            panic!("Elements count:{count} must less than {N}.");
-        }
+        assert!(count <= N, "Elements count:{count} must less than {N}.");
 
         let raw = std::array::from_fn(|i| arr[i]);
         let shape = TensorShape::from(shape);
@@ -86,33 +87,30 @@ impl<T: Num + Copy, const N: usize> Tensor<T, N> {
     }
 
     pub fn new_vec(arr: &[T]) -> Self {
-        if arr.len() > N {
-            panic!("Array length out of {N} ");
-        }
+        assert!(arr.len() <= N, "Array length out of {N} ");
         Self::new(arr, &[1])
     }
 
-    pub fn dot<U, const RN: usize>(&self, rhs: Tensor<T, RN>) -> U {
-        todo!()
-    }
-}
+    pub fn dot<const RN: usize>(&self, rhs: Tensor<T, RN>) -> T {
+        assert!(
+            self.shape.size() == 1 || rhs.shape.size() == 1,
+            "Dot Only for 1d tensors"
+        );
 
-impl<T, const N: usize> Index<&[usize]> for Tensor<T, N>
-where
-    T: Num + Copy,
-{
-    type Output = T;
-    fn index(&self, index: &[usize]) -> &Self::Output {
-        if index.len() > MAX_DIM {
-            panic!("Only {MAX_DIM} dimension tensor supported.");
+        assert!(N == RN, "Dot operand's length not equal");
+        let mut acc = T::zero();
+        for i in 0..N {
+            acc = acc + self.raw[i] * rhs.raw[i];
         }
-
-        let real_i = self.shape.to_index(index);
-        &self.raw[real_i]
+        acc
     }
 }
 
 pub type Float3 = Tensor<f32, 3>;
+pub type Float3x3 = Tensor<f32, 9>;
+
+pub type Float4 = Tensor<f32, 4>;
+pub type Float4x4 = Tensor<f32, 16>;
 
 #[test]
 fn test_shape() {
@@ -131,22 +129,4 @@ fn test_shape() {
     let t = tensor!([1,2,3,4,5,6,7,8,9];3,3);
     assert_eq!(t.shape.get(0), 3);
     assert_eq!(t.shape.get(1), 3);
-}
-
-#[test]
-fn test_index() {
-    use crate::tensor;
-    use std::iter::zip;
-    let t = tensor!(1.;1,2,3,4);
-
-    let i = &[0; 4];
-    assert_eq!(t[i], 1.);
-
-    let i = &[0, 0, 0, 3];
-    assert_eq!(t[i], 1.);
-
-    let t = tensor!([1,2,3,4,5,6,7,8,9];3,3);
-    for (i, j) in zip(0..2usize, 0..2usize) {
-        assert_eq!(t[&[i, j]], i * 3 + j + 1);
-    }
 }

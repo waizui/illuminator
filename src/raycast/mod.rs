@@ -3,6 +3,7 @@ use crate::core::tensor::Float3;
 pub mod bvh;
 pub mod sphere;
 
+#[derive(Debug)]
 pub struct Ray {
     pub org: Float3,
     pub dir: Float3,
@@ -14,6 +15,7 @@ impl Ray {
     }
 }
 
+#[derive(Debug)]
 pub struct Hit {
     pub ray: Ray,
     pub t: f32,
@@ -26,6 +28,6 @@ impl Hit {
 }
 
 pub trait Raycast {
-    fn raycast(&self, ray: Ray) -> Hit;
+    fn raycast(&self, ray: Ray) -> Option<Hit> ;
 }
 

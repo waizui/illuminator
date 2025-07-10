@@ -1,4 +1,4 @@
-use crate::raycast::{Ray, Raycast};
+use crate::raycast::*;
 
 #[derive(Debug)]
 pub struct BVH<T> {
@@ -8,7 +8,7 @@ pub struct BVH<T> {
 impl<T> BVH<T> {}
 
 impl<T> Raycast for BVH<T> {
-    fn raycast(&self, ray: Ray) -> super::Hit {
+    fn raycast(&self, ray: Ray) -> Option<Hit> {
         todo!()
     }
 }
