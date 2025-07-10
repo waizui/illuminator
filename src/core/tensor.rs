@@ -1,5 +1,5 @@
 use num_traits::Num;
-use std::{iter::zip, ops::Index};
+use std::{ops::Index, usize};
 
 const MAX_DIM: usize = 4;
 
@@ -84,6 +84,17 @@ impl<T: Num + Copy, const N: usize> Tensor<T, N> {
         let shape = TensorShape::from(shape);
         Tensor { raw, shape }
     }
+
+    pub fn new_vec(arr: &[T]) -> Self {
+        if arr.len() > N {
+            panic!("Array length out of {N} ");
+        }
+        Self::new(arr, &[1])
+    }
+
+    pub fn dot<U, const RN: usize>(&self, rhs: Tensor<T, RN>) -> U {
+        todo!()
+    }
 }
 
 impl<T, const N: usize> Index<&[usize]> for Tensor<T, N>
@@ -100,6 +111,8 @@ where
         &self.raw[real_i]
     }
 }
+
+pub type Float3 = Tensor<f32, 3>;
 
 #[test]
 fn test_shape() {
@@ -123,6 +136,7 @@ fn test_shape() {
 #[test]
 fn test_index() {
     use crate::tensor;
+    use std::iter::zip;
     let t = tensor!(1.;1,2,3,4);
 
     let i = &[0; 4];
