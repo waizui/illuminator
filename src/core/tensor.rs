@@ -139,6 +139,7 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
             shape: self.shape,
         }
     }
+
 }
 
 pub type Float3 = Tensor<f32, 3>;

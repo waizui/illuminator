@@ -11,6 +11,15 @@ impl Bounds3f {
         Bounds3f { min, max }
     }
 
+    pub fn zero() -> Bounds3f {
+        use crate::core::tensor::Tensor;
+        use crate::tensor;
+        Bounds3f {
+            min: tensor!(0.;3),
+            max: tensor!(0.;3),
+        }
+    }
+
     pub fn centroid(&self) -> Float3 {
         self.min * 0.5 + self.max * 0.5
     }
@@ -27,6 +36,10 @@ impl Bounds3f {
             min: self.min.min(p),
             max: self.max.max(p),
         }
+    }
+
+    pub fn offset(&self, p: Float3) -> Float3 {
+        todo!()
     }
 }
 
