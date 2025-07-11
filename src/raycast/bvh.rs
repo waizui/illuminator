@@ -1,13 +1,24 @@
 use crate::raycast::*;
 
 #[derive(Debug)]
-pub struct BVH<T> {
-    raw: Vec<T>,
+pub struct BVHNode {}
+
+#[derive(Debug)]
+pub struct BVH {
+    root: BVHNode,
 }
 
-impl<T> BVH<T> {}
+impl BVH {
+    pub fn push(&self) {
+        todo!()
+    }
 
-impl<T> Raycast for BVH<T> {
+    pub fn build(&self) {
+        todo!()
+    }
+}
+
+impl Raycast for BVH {
     fn raycast(&self, ray: Ray) -> Option<Hit> {
         todo!()
     }

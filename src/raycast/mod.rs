@@ -1,6 +1,8 @@
 use crate::core::tensor::Float3;
 
+pub mod bounds;
 pub mod bvh;
+pub mod primitive;
 pub mod sphere;
 
 #[derive(Debug)]

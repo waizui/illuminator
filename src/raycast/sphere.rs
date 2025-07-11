@@ -1,4 +1,4 @@
-use crate::{core::tensor::Float3, raycast::*};
+use crate::{core::tensor::Float3, raycast::{bounds::Bounds, primitive::Primitive, *}};
 
 pub struct Sphere {
     pub cnt: Float3,
@@ -39,6 +39,13 @@ impl Raycast for Sphere {
         None
     }
 }
+
+impl Primitive for Sphere {
+    fn bounds() -> bounds::Bounds {
+        todo!()
+    }
+}
+
 
 #[test]
 fn test_sphere() {

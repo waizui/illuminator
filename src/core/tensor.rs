@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use num_traits::Num;
 
 pub const MAX_DIM: usize = 4;
@@ -65,15 +67,17 @@ impl From<&[usize]> for TensorShape {
     }
 }
 
+pub trait TensorNum: Num + Copy + Ord {}
+
 /// simple stack-alloc tensor
 /// sadlly 3 floats array will use ptr instead of registers: https://mcyoung.xyz/2024/04/17/calling-convention/
 #[derive(Clone, Copy, Debug)]
-pub struct Tensor<T: Num + Copy, const N: usize> {
+pub struct Tensor<T: TensorNum, const N: usize> {
     pub raw: [T; N],
     pub shape: TensorShape, // 1 byte 1 dim
 }
 
-impl<T: Num + Copy, const N: usize> Tensor<T, N> {
+impl<T: TensorNum, const N: usize> Tensor<T, N> {
     pub fn new(arr: &[T], shape: &[usize]) -> Self {
         let count: usize = shape.iter().fold(1, |acc, &x| {
             assert!(x < 0xFF, "Dimension limit is 0-255, now:{x}");
@@ -103,6 +107,14 @@ impl<T: Num + Copy, const N: usize> Tensor<T, N> {
             acc = acc + self.raw[i] * rhs.raw[i];
         }
         acc
+    }
+
+    pub fn min(&self, other: Self) -> Self {
+        let raw: [T; N] = std::array::from_fn(|i| min(self.raw[i], other.raw[i]));
+        Tensor {
+            raw,
+            shape: self.shape,
+        }
     }
 }
 
