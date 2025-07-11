@@ -1,8 +1,11 @@
-use std::cmp::min;
-
 use num_traits::Num;
 
 pub const MAX_DIM: usize = 4;
+
+pub trait TensorNum: Num + Copy + PartialOrd {}
+impl TensorNum for f32 {}
+impl TensorNum for i32 {}
+impl TensorNum for usize {}
 
 #[derive(Clone, Copy, Debug)]
 pub struct TensorShape {
@@ -67,8 +70,6 @@ impl From<&[usize]> for TensorShape {
     }
 }
 
-pub trait TensorNum: Num + Copy + Ord {}
-
 /// simple stack-alloc tensor
 /// sadlly 3 floats array will use ptr instead of registers: https://mcyoung.xyz/2024/04/17/calling-convention/
 #[derive(Clone, Copy, Debug)]
@@ -110,7 +111,29 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
     }
 
     pub fn min(&self, other: Self) -> Self {
-        let raw: [T; N] = std::array::from_fn(|i| min(self.raw[i], other.raw[i]));
+        let raw: [T; N] = std::array::from_fn(|i| {
+            if self.raw[i] < other.raw[i] {
+                return self.raw[i];
+            }
+
+            other.raw[i]
+        });
+
+        Tensor {
+            raw,
+            shape: self.shape,
+        }
+    }
+
+    pub fn max(&self, other: Self) -> Self {
+        let raw: [T; N] = std::array::from_fn(|i| {
+            if self.raw[i] < other.raw[i] {
+                return other.raw[i];
+            }
+
+            self.raw[i]
+        });
+
         Tensor {
             raw,
             shape: self.shape,

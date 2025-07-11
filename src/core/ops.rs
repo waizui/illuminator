@@ -1,5 +1,4 @@
-use crate::core::tensor::{Tensor, TensorNum, MAX_DIM};
-use num_traits::Num;
+use crate::core::tensor::{MAX_DIM, Tensor, TensorNum};
 use std::ops::{Add, Div, Index, Mul, Sub};
 
 impl<T: TensorNum, const N: usize> Sub for Tensor<T, N> {
