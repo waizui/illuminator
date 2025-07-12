@@ -140,6 +140,9 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
         }
     }
 
+    pub fn get(&self, index: usize) -> T {
+        self.raw[index]
+    }
 }
 
 pub type Float3 = Tensor<f32, 3>;

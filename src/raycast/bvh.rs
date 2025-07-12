@@ -1,4 +1,9 @@
-use crate::raycast::{bounds::Bounds3f, primitive::Primitive, *};
+use crate::raycast::{
+    morton::{MortonCode, encode_morton3, radix_sort},
+    bounds::Bounds3f,
+    primitive::Primitive,
+    *,
+};
 use rayon::prelude::*;
 
 pub struct BVHNode {}
@@ -19,6 +24,12 @@ impl BVH {
             prim_index: usize,
         }
 
+        impl MortonCode for MortonPrim {
+            fn get_morton_code(&self) -> usize {
+                self.morton_code
+            }
+        }
+
         // bound of whole bvh
         let bounds = self
             .primitives
@@ -35,13 +46,11 @@ impl BVH {
                 morton_prim.prim_index = i;
                 let cnt_offset = bounds.offset(self.primitives[i].bounds().centroid());
                 let offset = cnt_offset * morton_scale as f32;
-                morton_prim.morton_code = encode_morton(offset);
+                morton_prim.morton_code = encode_morton3(offset);
             });
-    }
-}
 
-fn encode_morton(p: Float3) -> usize {
-    todo!()
+        radix_sort(&mut morton_prims);
+    }
 }
 
 impl Raycast for BVH {

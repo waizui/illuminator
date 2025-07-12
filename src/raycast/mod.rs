@@ -4,6 +4,7 @@ pub mod bounds;
 pub mod bvh;
 pub mod primitive;
 pub mod sphere;
+pub mod morton;
 
 #[derive(Debug)]
 pub struct Ray {

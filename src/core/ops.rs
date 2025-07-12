@@ -92,6 +92,7 @@ impl<T: TensorNum, const N: usize> Div<T> for Tensor<T, N> {
     }
 }
 
+/// rust fail to recognise two index methods
 impl<T, const N: usize> Index<&[usize]> for Tensor<T, N>
 where
     T: TensorNum,
@@ -107,6 +108,7 @@ where
         &self.raw[real_i]
     }
 }
+
 
 #[test]
 fn test_add() {
