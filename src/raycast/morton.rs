@@ -1,4 +1,5 @@
 use crate::core::tensor::Float3;
+use std::mem;
 
 /// https://pbr-book.org/4ed/Utilities/Mathematical_Infrastructure#EncodeMorton3
 pub fn encode_morton3(p: Float3) -> usize {
@@ -25,11 +26,137 @@ pub fn left_shift3(mut x: usize) -> usize {
     x
 }
 
-pub trait MortonCode {
-    fn get_morton_code(&self) -> usize;
+pub trait MortonCode: Default {
+    fn morton_code(&self) -> usize;
 }
 
+/// https://pbr-book.org/4ed/Primitives_and_Intersection_Acceleration/Bounding_Volume_Hierarchies#RadixSort
 pub fn radix_sort(v: &mut [impl MortonCode]) {
-    todo!()
+    let mut invec: Vec<(usize, usize)> = v
+        .iter()
+        .enumerate()
+        .map(|(i, x)| (i, x.morton_code()))
+        .collect();
+
+    let mut outvec: Vec<(usize, usize)> = (0..v.len()).enumerate().collect();
+
+    let pass_bits = 6;
+    let nbits = 30;
+    assert_eq!(nbits % pass_bits, 0);
+    let npasses = nbits / pass_bits;
+
+    for pass in 0..npasses {
+        let lowbit = pass * pass_bits;
+        if pass & 1 == 1 {
+            mem::swap(&mut invec, &mut outvec);
+        }
+
+        let nbuckets = 1 << pass_bits;
+        let mut buckets_count: Vec<usize> = vec![0; nbuckets];
+        let bit_mask = (1 << pass_bits) - 1;
+        for &mp in invec.iter() {
+            let code = mp.1;
+            let bucket = (code >> lowbit) & bit_mask;
+            buckets_count[bucket] += 1;
+        }
+
+        let mut out_index: Vec<usize> = vec![0; nbuckets];
+        out_index[0] = 0;
+
+        for i in 1..nbuckets {
+            out_index[i] = out_index[i - 1] + buckets_count[i - 1];
+        }
+
+        for &mp in invec.iter() {
+            let code = mp.1;
+            let bucket = (code >> lowbit) & bit_mask;
+            outvec[out_index[bucket]] = mp;
+            out_index[bucket] += 1;
+        }
+    }
+
+    if npasses & 1 == 1 {
+        mem::swap(&mut invec, &mut outvec);
+    }
+
+    let mut map: Vec<usize> = outvec.iter().map(|(org_i, _)| *org_i).collect();
+    inplace_map(&mut map, v);
 }
 
+/// new[i] = org[map[i]]
+pub fn inplace_map<T>(map: &mut [usize], org: &mut [T])
+where
+    T: Default,
+{
+    assert_eq!(map.len(), org.len());
+    for i in 0..org.len() {
+        let x = mem::take(&mut org[i]);
+        let mut j = i;
+        loop {
+            let k = map[j];
+            map[j] = j;
+            if i == k {
+                break;
+            }
+            org.swap(k, j);
+            j = k;
+        }
+
+        org[j] = x;
+    }
+}
+
+/// new[map[i]] = org[i]
+pub fn inplace_map_rev<T>(map: &mut [usize], org: &mut [T]) {
+    let n = org.len();
+    for i in 0..n {
+        while map[i] != i {
+            let k = map[i];
+            org.swap(i, k);
+            map.swap(i, k);
+        }
+    }
+}
+
+#[test]
+fn test_inplace_map() {
+    let mut map = [2, 0, 1, 3];
+    let mut chars = ["A", "B", "C", "D"];
+    inplace_map_rev(&mut map, &mut chars);
+    assert_eq!(chars, ["B", "C", "A", "D"]);
+
+    let mut map = [2, 0, 1, 3];
+    let mut chars = ["A", "B", "C", "D"];
+    inplace_map(&mut map, &mut chars);
+    assert_eq!(chars, ["C", "A", "B", "D"]);
+}
+
+#[test]
+fn test_radix_sort() {
+    #[derive(Default)]
+    struct TestMorton {
+        morton_code: usize,
+        org_index: usize,
+    }
+
+    impl MortonCode for TestMorton {
+        fn morton_code(&self) -> usize {
+            self.morton_code
+        }
+    }
+
+    let nm = 4;
+    let mut ms: Vec<TestMorton> = Vec::with_capacity(nm);
+    for i in 0..nm {
+        let x = (i as f32 / nm as f32) * 1024.;
+        let m = TestMorton {
+            morton_code: encode_morton3(Float3::new_vec(&[x; 3])),
+            org_index: i,
+        };
+        ms.push(m);
+    }
+
+    ms.reverse();
+    radix_sort(&mut ms);
+    assert_eq!(ms[0].org_index, 0);
+}

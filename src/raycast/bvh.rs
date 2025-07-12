@@ -1,6 +1,6 @@
 use crate::raycast::{
-    morton::{MortonCode, encode_morton3, radix_sort},
     bounds::Bounds3f,
+    morton::{MortonCode, encode_morton3, radix_sort},
     primitive::Primitive,
     *,
 };
@@ -19,13 +19,14 @@ impl BVH {
     }
 
     pub fn build(&self) {
+        #[derive(Default)]
         struct MortonPrim {
             morton_code: usize,
             prim_index: usize,
         }
 
         impl MortonCode for MortonPrim {
-            fn get_morton_code(&self) -> usize {
+            fn morton_code(&self) -> usize {
                 self.morton_code
             }
         }
