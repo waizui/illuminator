@@ -31,7 +31,7 @@ impl BVH {
             }
         }
 
-        // bound of whole bvh
+        // bounds of whole bvh
         let bounds = self
             .primitives
             .iter()
@@ -51,6 +51,7 @@ impl BVH {
             });
 
         radix_sort(&mut morton_prims);
+        todo!()
     }
 }
 

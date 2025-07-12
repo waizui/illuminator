@@ -46,7 +46,9 @@ pub fn radix_sort(v: &mut [impl MortonCode]) {
     let npasses = nbits / pass_bits;
 
     for pass in 0..npasses {
+        // perform one pass of radix sort, sorting _bitsPerPass_ bits
         let lowbit = pass * pass_bits;
+        // set in and out vector references for radix sort pass
         let (invec, outvec) = {
             if pass & 1 == 1 {
                 (&mut tempv, &mut orgv)
@@ -55,6 +57,7 @@ pub fn radix_sort(v: &mut [impl MortonCode]) {
             }
         };
 
+        // count number of zero bits in array for current radix sort bit
         let nbuckets = 1 << pass_bits;
         let mut buckets_count: Vec<usize> = vec![0; nbuckets];
         let bit_mask = (1 << pass_bits) - 1;
@@ -64,9 +67,9 @@ pub fn radix_sort(v: &mut [impl MortonCode]) {
             buckets_count[bucket] += 1;
         }
 
+        // compute starting index in output array for each bucket
         let mut out_index: Vec<usize> = vec![0; nbuckets];
         out_index[0] = 0;
-
         for i in 1..nbuckets {
             out_index[i] = out_index[i - 1] + buckets_count[i - 1];
         }
@@ -176,11 +179,10 @@ fn test_radix_sort() {
         };
         ms.push(m);
     }
-
+        
     for i in (0..nm).step_by(2) {
         ms.swap(i, i + 1);
     }
-
     ms.reverse();
     radix_sort(&mut ms);
     for (i, m) in ms.iter().enumerate() {
