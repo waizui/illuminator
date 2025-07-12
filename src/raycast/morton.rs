@@ -32,13 +32,13 @@ pub trait MortonCode: Default {
 
 /// https://pbr-book.org/4ed/Primitives_and_Intersection_Acceleration/Bounding_Volume_Hierarchies#RadixSort
 pub fn radix_sort(v: &mut [impl MortonCode]) {
-    let mut invec: Vec<(usize, usize)> = v
+    let mut orgv: Vec<(usize, usize)> = v
         .iter()
         .enumerate()
         .map(|(i, x)| (i, x.morton_code()))
         .collect();
 
-    let mut outvec: Vec<(usize, usize)> = (0..v.len()).enumerate().collect();
+    let mut tempv: Vec<(usize, usize)> = (0..v.len()).enumerate().collect();
 
     let pass_bits = 6;
     let nbits = 30;
@@ -47,9 +47,13 @@ pub fn radix_sort(v: &mut [impl MortonCode]) {
 
     for pass in 0..npasses {
         let lowbit = pass * pass_bits;
-        if pass & 1 == 1 {
-            mem::swap(&mut invec, &mut outvec);
-        }
+        let (invec, outvec) = {
+            if pass & 1 == 1 {
+                (&mut tempv, &mut orgv)
+            } else {
+                (&mut orgv, &mut tempv)
+            }
+        };
 
         let nbuckets = 1 << pass_bits;
         let mut buckets_count: Vec<usize> = vec![0; nbuckets];
@@ -75,11 +79,13 @@ pub fn radix_sort(v: &mut [impl MortonCode]) {
         }
     }
 
+    // make orgv always sorted one
     if npasses & 1 == 1 {
-        mem::swap(&mut invec, &mut outvec);
+        mem::swap(&mut orgv, &mut tempv);
     }
 
-    let mut map: Vec<usize> = outvec.iter().map(|(org_i, _)| *org_i).collect();
+    // mapping proxy array order to orginal array
+    let mut map: Vec<usize> = orgv.iter().map(|(org_i, _)| *org_i).collect();
     inplace_map(&mut map, v);
 }
 
@@ -132,6 +138,21 @@ fn test_inplace_map() {
 }
 
 #[test]
+fn test_encode_morton() {
+    let p = Float3::new_vec(&[1.; 3]);
+    let m = encode_morton3(p);
+    assert_eq!(m, 7);
+
+    let p = Float3::new_vec(&[1., 2., 3.]);
+    let m = encode_morton3(p);
+    assert_eq!(m, 0b110101);
+
+    let p = Float3::new_vec(&[1023.; 3]);
+    let m = encode_morton3(p);
+    assert_eq!(m, 0b111111111111111111111111111111);
+}
+
+#[test]
 fn test_radix_sort() {
     #[derive(Default)]
     struct TestMorton {
@@ -145,7 +166,7 @@ fn test_radix_sort() {
         }
     }
 
-    let nm = 4;
+    let nm = 256;
     let mut ms: Vec<TestMorton> = Vec::with_capacity(nm);
     for i in 0..nm {
         let x = (i as f32 / nm as f32) * 1024.;
@@ -156,7 +177,13 @@ fn test_radix_sort() {
         ms.push(m);
     }
 
+    for i in (0..nm).step_by(2) {
+        ms.swap(i, i + 1);
+    }
+
     ms.reverse();
     radix_sort(&mut ms);
-    assert_eq!(ms[0].org_index, 0);
+    for (i, m) in ms.iter().enumerate() {
+        assert_eq!(m.org_index, i);
+    }
 }
