@@ -45,7 +45,10 @@ impl Raycast for Sphere {
 
 impl Primitive for Sphere {
     fn bounds(&self) -> bounds::Bounds3f {
-        todo!()
+        let r = Float3::new_vec(&[self.r; 3]);
+        let min = self.cnt - r;
+        let max = self.cnt + r;
+        Bounds3f { min, max }
     }
 }
 
@@ -66,4 +69,12 @@ fn test_sphere() {
         assert_eq!(hit.position()[&[0]], x);
         assert_eq!(hit.position()[&[1]], y);
     }
+
+    let b = s.bounds();
+    assert_eq!(b.min.get(0), -1.);
+    assert_eq!(b.min.get(1), -1.);
+    assert_eq!(b.min.get(2), -1.);
+    assert_eq!(b.max.get(0), 1.);
+    assert_eq!(b.max.get(1), 1.);
+    assert_eq!(b.max.get(2), 1.);
 }

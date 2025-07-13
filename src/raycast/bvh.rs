@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::raycast::{
     bounds::Bounds3f,
     morton::{MortonCode, encode_morton3, radix_sort},
@@ -6,38 +8,53 @@ use crate::raycast::{
 };
 use rayon::prelude::*;
 
-pub struct BVHNode {}
+#[derive(Default)]
+pub struct BVHBuildNode {}
+
+#[derive(Default, Clone)]
+struct MortonPrim {
+    morton_code: usize,
+    prim_index: usize,
+}
+
+impl MortonCode for MortonPrim {
+    fn morton_code(&self) -> usize {
+        self.morton_code
+    }
+}
+
+#[derive(Default)]
+struct Treelet {
+    start_index: usize,
+    nprimitives: usize,
+    nodes: Vec<BVHBuildNode>, // root node of treelet
+}
 
 pub struct BVH {
-    root: BVHNode,
+    root: BVHBuildNode,
     primitives: Vec<Box<dyn Primitive>>,
 }
 
 impl BVH {
-    pub fn push(&self) {
-        todo!()
+    pub fn new(capacity: usize) -> BVH {
+        BVH {
+            root: BVHBuildNode {},
+            primitives: Vec::with_capacity(capacity),
+        }
+    }
+
+    pub fn push(&mut self, prim: impl Primitive + 'static) {
+        self.primitives.push(Box::new(prim));
     }
 
     pub fn build(&self) {
-        #[derive(Default)]
-        struct MortonPrim {
-            morton_code: usize,
-            prim_index: usize,
-        }
-
-        impl MortonCode for MortonPrim {
-            fn morton_code(&self) -> usize {
-                self.morton_code
-            }
-        }
-
         // bounds of whole bvh
         let bounds = self
             .primitives
             .iter()
             .fold(Bounds3f::zero(), |acc, b| acc.union(b.bounds()));
 
-        let mut morton_prims: Vec<MortonPrim> = Vec::with_capacity(self.primitives.len());
+        let mut morton_prims: Vec<MortonPrim> = vec![MortonPrim::default(); self.primitives.len()];
         morton_prims
             .par_iter_mut()
             .enumerate()
@@ -51,6 +68,61 @@ impl BVH {
             });
 
         radix_sort(&mut morton_prims);
+
+        // create LBVH treelets at bottom of BVH
+        // find intervals of primitives for each treelet
+        let mut treelets: Vec<Treelet> = Vec::new();
+        let mut start = 0;
+        let mut end = 1;
+        let prims_size = morton_prims.len();
+        while end <= prims_size {
+            // use hight 12 bits to cluster treelets
+            let mask = 0b00111111111111000000000000000000;
+            if (end == prims_size)
+                || ((morton_prims[start].morton_code & mask)
+                    != (morton_prims[end].morton_code & mask))
+            {
+                let nprimitives = end - start;
+                let max_nodes = 2 * nprimitives - 1;
+                let nodes = Vec::with_capacity(max_nodes);
+                treelets.push(Treelet {
+                    start_index: start,
+                    nprimitives,
+                    nodes,
+                });
+                start = end;
+            }
+
+            end += 1;
+        }
+
+        let total_nodes = Arc::new(Mutex::new(0usize));
+        treelets.par_iter_mut().for_each(|tr| {
+            // i-th treelet
+            // 30 bits morton code , 12 bits used for building treelet clusters
+            let first_bit_index: usize = 29 - 12;
+            let mut nodes_created = 0;
+            self.emit_LBVH(
+                &mut tr.nodes,
+                &morton_prims,
+                tr.nprimitives,
+                &mut nodes_created,
+                first_bit_index,
+            );
+            let total_nodes = Arc::clone(&total_nodes);
+            let mut guard = total_nodes.lock().unwrap();
+            *guard += nodes_created;
+        });
+    }
+
+    fn emit_LBVH(
+        &self,
+        build_nodes: &mut [BVHBuildNode],
+        morton_prims: &[MortonPrim],
+        nprimitives: usize,
+        created_nodes: &mut usize,
+        bit_index: usize,
+    ) {
         todo!()
     }
 }
@@ -59,4 +131,17 @@ impl Raycast for BVH {
     fn raycast(&self, ray: Ray) -> Option<Hit> {
         todo!()
     }
+}
+
+#[test]
+fn test_bvh() {
+    use crate::raycast::sphere::Sphere;
+    let n = 8;
+    let mut bvh = BVH::new(n);
+    for i in 0..n {
+        let sph = Sphere::new(Float3::new_vec(&[i as f32; 3]), 1.);
+        bvh.push(sph);
+    }
+
+    bvh.build();
 }
