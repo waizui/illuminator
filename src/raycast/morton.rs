@@ -142,15 +142,15 @@ fn test_inplace_map() {
 
 #[test]
 fn test_encode_morton() {
-    let p = Float3::new_vec(&[1.; 3]);
+    let p = Float3::vec(&[1.; 3]);
     let m = encode_morton3(p);
     assert_eq!(m, 7);
 
-    let p = Float3::new_vec(&[1., 2., 3.]);
+    let p = Float3::vec(&[1., 2., 3.]);
     let m = encode_morton3(p);
     assert_eq!(m, 0b110101);
 
-    let p = Float3::new_vec(&[1023.; 3]);
+    let p = Float3::vec(&[1023.; 3]);
     let m = encode_morton3(p);
     assert_eq!(m, 0b111111111111111111111111111111);
 }
@@ -174,7 +174,7 @@ fn test_radix_sort() {
     for i in 0..nm {
         let x = (i as f32 / nm as f32) * 1024.;
         let m = TestMorton {
-            morton_code: encode_morton3(Float3::new_vec(&[x; 3])),
+            morton_code: encode_morton3(Float3::vec(&[x; 3])),
             org_index: i,
         };
         ms.push(m);

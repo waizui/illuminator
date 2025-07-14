@@ -51,8 +51,8 @@ impl Raycast for Bounds3f {
 
 #[test]
 fn test_bounds() {
-    let b = Bounds3f::new(Float3::new_vec(&[-1.; 3]), Float3::new_vec(&[1.; 3]));
-    let b1 = Bounds3f::new(Float3::new_vec(&[-1.; 3]), Float3::new_vec(&[2.; 3]));
+    let b = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[1.; 3]));
+    let b1 = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[2.; 3]));
     let b3 = b.union(b1);
     assert_eq!(b3.min[&[0]], -1.);
     assert_eq!(b3.max[&[0]], 2.);

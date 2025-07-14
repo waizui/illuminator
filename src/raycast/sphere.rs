@@ -3,6 +3,7 @@ use crate::{
     raycast::{bounds::Bounds3f, primitive::Primitive, *},
 };
 
+#[derive(Clone)]
 pub struct Sphere {
     pub cnt: Float3,
     pub r: f32,
@@ -45,23 +46,27 @@ impl Raycast for Sphere {
 
 impl Primitive for Sphere {
     fn bounds(&self) -> bounds::Bounds3f {
-        let r = Float3::new_vec(&[self.r; 3]);
+        let r = Float3::vec(&[self.r; 3]);
         let min = self.cnt - r;
         let max = self.cnt + r;
         Bounds3f { min, max }
+    }
+
+    fn clone_as_box(&self) -> Box<dyn Primitive> {
+        Box::new(self.clone())
     }
 }
 
 #[test]
 fn test_sphere() {
-    let s = Sphere::new(Float3::new_vec(&[0.; 3]), 1.);
+    let s = Sphere::new(Float3::vec(&[0.; 3]), 1.);
 
     for i in 0..11 {
         let y = i as f32 / 10.;
         let x = (1. - y * y).sqrt();
         let z = 0.;
 
-        let org = Float3::new_vec(&[x, y, z]) * 2.;
+        let org = Float3::vec(&[x, y, z]) * 2.;
         let dir = org * -1.;
         let ray = Ray::new(org, dir);
 
