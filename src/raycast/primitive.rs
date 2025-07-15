@@ -1,7 +1,9 @@
-use crate::raycast::{bounds::Bounds3f, Raycast};
+use std::fmt::Debug;
 
-pub trait Primitive: Raycast + Sync + Send  {
+use crate::raycast::{Raycast, bounds::Bounds3f};
+
+pub trait Primitive: Raycast + Sync + Send + Debug {
     fn bounds(&self) -> Bounds3f;
 
-    fn clone_as_box(&self)->Box<dyn Primitive>;
+    fn clone_as_box(&self) -> Box<dyn Primitive>;
 }

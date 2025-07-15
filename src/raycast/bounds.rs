@@ -39,7 +39,26 @@ impl Bounds3f {
     }
 
     pub fn offset(&self, p: Float3) -> Float3 {
-        todo!()
+        let o = p - self.min;
+        let extent = self.max - self.min;
+
+        Float3::vec(&[
+            if extent.get(0) > 0. {
+                o.get(0) / extent.get(0)
+            } else {
+                o.get(0)
+            },
+            if extent.get(1) > 0. {
+                o.get(1) / extent.get(1)
+            } else {
+                o.get(1)
+            },
+            if extent.get(2) > 0. {
+                o.get(2) / extent.get(2)
+            } else {
+                o.get(2)
+            },
+        ])
     }
 }
 

@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::{
     core::tensor::Float3,
     raycast::{bounds::Bounds3f, primitive::Primitive, *},
@@ -41,6 +43,12 @@ impl Raycast for Sphere {
             return Some(Hit { ray, t });
         }
         None
+    }
+}
+
+impl Debug for Sphere {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"{} {}",self.cnt,self.r)
     }
 }
 

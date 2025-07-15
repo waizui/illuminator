@@ -179,7 +179,7 @@ fn test_radix_sort() {
         };
         ms.push(m);
     }
-        
+
     for i in (0..nm).step_by(2) {
         ms.swap(i, i + 1);
     }

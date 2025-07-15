@@ -1,5 +1,5 @@
 use crate::core::tensor::{MAX_DIM, Tensor, TensorNum};
-use std::ops::{Add, Div, Index, Mul, Sub};
+use std::{fmt::Display, ops::{Add, Div, Index, Mul, Sub}, string};
 
 impl<T: TensorNum, const N: usize> Sub for Tensor<T, N> {
     type Output = Self;
@@ -106,6 +106,14 @@ where
 
         let real_i = self.shape.to_index(index);
         &self.raw[real_i]
+    }
+}
+
+impl<T, const N: usize> Display for Tensor<T,N>
+where T: TensorNum
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"todo:impl tensor fmt")
     }
 }
 
