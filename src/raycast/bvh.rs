@@ -1,6 +1,6 @@
 use std::sync::{
     Arc, Mutex,
-    atomic::{AtomicUsize, Ordering::SeqCst},
+    atomic::{AtomicUsize, Ordering::Relaxed},
 };
 
 use crate::{
@@ -79,14 +79,14 @@ struct Treelet {
 }
 
 pub struct BVH {
-    node_prims_limit: usize,
+    node_prims_limit: usize, // max primitives a node can include
     primitives: Vec<Box<dyn Primitive>>,
 }
 
 impl BVH {
     pub fn new(capacity: usize) -> BVH {
         BVH {
-            node_prims_limit: 256,
+            node_prims_limit: 65,
             primitives: Vec::with_capacity(capacity),
         }
     }
@@ -95,7 +95,7 @@ impl BVH {
         self.primitives.push(Box::new(prim));
     }
 
-    pub fn build(&mut self, prims_limit: usize) {
+    pub fn build(&mut self, prims_limit: usize, par_build: bool) {
         self.node_prims_limit = prims_limit;
         // bounds of whole bvh
         let bounds = self
@@ -134,6 +134,7 @@ impl BVH {
                         != (morton_prims[end].morton_code & mask)
                 {
                     let nprimitives = end - start;
+                    // for n primitives max nodes less than n^2 -1
                     let max_nodes = 2 * nprimitives - 1;
                     let mut nodes = Vec::with_capacity(max_nodes);
                     for _ in 0..max_nodes {
@@ -162,20 +163,18 @@ impl BVH {
         let ordered_prims_offset = Arc::new(AtomicUsize::new(0));
         let total_nodes = Arc::new(Mutex::new(0usize));
 
-        treelets.par_iter_mut().for_each(|tr| {
+        let build_task = |tr: &mut Treelet| {
             // i-th treelet
             // 30 bits morton code , 12 bits used for building treelet clusters
             let first_bit_index: i32 = 29 - 12;
             let ordered_prims = ordered_prims.clone();
             let ordered_prims_offset = ordered_prims_offset.clone();
-            let mut nodes_created = 0;
-            let root = self.emit_lbvh(
+            let (root, nodes_created) = self.emit_lbvh(
                 &mut tr.nodes[0..],
                 &morton_prims[tr.start_index..tr.start_index + tr.nprimitives],
                 tr.nprimitives,
                 ordered_prims,
                 ordered_prims_offset,
-                &mut nodes_created,
                 first_bit_index,
             );
 
@@ -183,7 +182,13 @@ impl BVH {
             let total_nodes = total_nodes.clone();
             let mut guard = total_nodes.lock().unwrap();
             *guard += nodes_created;
-        });
+        };
+
+        if par_build {
+            treelets.par_iter_mut().for_each(build_task);
+        } else {
+            treelets.iter_mut().for_each(build_task);
+        }
 
         let mut treelet_roots: Vec<Arc<BVHBuildNode>> = Vec::with_capacity(treelets.len());
         treelets.iter().for_each(|tr| {
@@ -197,7 +202,7 @@ impl BVH {
         self.primitives = Arc::try_unwrap(ordered_prims).unwrap();
     }
 
-    #[allow(clippy::too_many_arguments)]
+    /// returns root node of sub tree and created nodes num
     fn emit_lbvh(
         &self,
         build_nodes: &mut [Arc<BVHBuildNode>],
@@ -205,29 +210,30 @@ impl BVH {
         nprimitives: usize,
         ordered_prims: Arc<Vec<Box<dyn Primitive>>>,
         ordered_prims_offset: Arc<AtomicUsize>,
-        created_nodes: &mut usize,
         bit_index: i32,
-    ) -> Arc<BVHBuildNode> {
+    ) -> (Arc<BVHBuildNode>, usize) {
         if bit_index == -1 || nprimitives < self.node_prims_limit {
-            let first_prim_offset = ordered_prims_offset.fetch_add(nprimitives, SeqCst);
-            *created_nodes += 1;
+            let first_prim_offset = ordered_prims_offset.fetch_add(nprimitives, Relaxed);
             let node = build_nodes[0].clone();
             let mut bounds = Bounds3f::zero();
+
             unsafe {
-                let base_ptr = ordered_prims.as_ptr() as *mut Box<dyn Primitive>;
+                let vec_ptr = Arc::as_ptr(&ordered_prims) as *mut Vec<Box<dyn Primitive>>;
+                let buffer_ptr = (*vec_ptr).as_mut_ptr();
+
                 for (i, morton_prim) in morton_prims.iter().enumerate() {
                     let org_prim_index = morton_prim.prim_index;
-                    let prim_box = self.primitives[org_prim_index].clone_as_box();
-                    bounds = bounds.union(prim_box.bounds());
-                    // it is thread safe since first_prim_offset is unique per thread
+                    let prim_box_ptr = self.primitives[org_prim_index].clone_as_box();
+                    bounds = bounds.union(prim_box_ptr.bounds());
                     let cur_prim_index = first_prim_offset + i;
-                    std::ptr::write(base_ptr.add(cur_prim_index), prim_box);
+                    std::ptr::write(buffer_ptr.add(cur_prim_index), prim_box_ptr);
                 }
 
                 let node_ptr = Arc::as_ptr(&node) as *mut BVHBuildNode;
                 (*node_ptr).init_leaf(first_prim_offset, nprimitives, bounds);
             }
-            node
+
+            (node, 1)
         } else {
             let mask = 1 << bit_index;
             let first_morton = morton_prims[0].morton_code;
@@ -239,35 +245,37 @@ impl BVH {
                     nprimitives,
                     ordered_prims,
                     ordered_prims_offset,
-                    created_nodes,
                     bit_index - 1,
                 );
             }
 
-            let mut splite_offset = split_index(nprimitives, |i| {
+            let mut split_offset = split_index(nprimitives, |i| {
+                // split index of current bit index
                 (first_morton & mask) == (morton_prims[i].morton_code & mask)
             });
 
-            splite_offset += 1;
-            *created_nodes += 1;
+            split_offset += 1; //split to build subtree
+            assert!(split_offset < nprimitives - 1);
+            assert_ne!(
+                morton_prims[split_offset - 1].morton_code & mask,
+                morton_prims[split_offset].morton_code & mask
+            );
 
-            let c0 = self.emit_lbvh(
-                &mut build_nodes[1..],
+            let (c0, c0_created_nodes) = self.emit_lbvh(
+                &mut build_nodes[1..], // [0] as current node
                 morton_prims,
-                splite_offset,
+                split_offset,
                 Arc::clone(&ordered_prims),
                 Arc::clone(&ordered_prims_offset),
-                created_nodes,
                 bit_index - 1,
             );
 
-            let c1 = self.emit_lbvh(
-                &mut build_nodes[1..],
-                morton_prims,
-                nprimitives - splite_offset,
+            let (c1, c1_created_nodes) = self.emit_lbvh(
+                &mut build_nodes[1 + c0_created_nodes..],
+                &morton_prims[split_offset..],
+                nprimitives - split_offset,
                 ordered_prims,
                 ordered_prims_offset,
-                created_nodes,
                 bit_index - 1,
             );
 
@@ -277,7 +285,8 @@ impl BVH {
                 let node_ptr = Arc::as_ptr(&node) as *mut BVHBuildNode;
                 (*node_ptr).init_inerior(axis, c0, c1);
             }
-            node
+
+            (node, c0_created_nodes + c1_created_nodes)
         }
     }
 
@@ -300,7 +309,7 @@ impl BVH {
         let mut node = Arc::new(BVHBuildNode::default());
 
         //TODO: impl
-        node
+        node.clone()
     }
 }
 
@@ -311,25 +320,30 @@ impl Raycast for BVH {
 }
 
 #[test]
-fn test_bvh() {
+fn test_bvh_order() {
     use crate::raycast::sphere::Sphere;
     use rand::seq::SliceRandom;
-    let n = 8;
+    let n = 1024;
+    let node_limit = 17;
+
     let mut bvh = BVH::new(n);
     let mut arr: Vec<usize> = (0..n).collect();
     let mut rng = rand::rng();
     arr.shuffle(&mut rng);
     for &i in arr.iter() {
-        let sph = Sphere::new(Float3::vec(&[i as f32; 3]), 1.);
+        let sph = Sphere::new(Float3::vec(&[i as f32; 3]), 0.5);
         bvh.push(sph);
     }
 
-    bvh.push(Sphere::new(Float3::vec(&[1022f32; 3]), 1.));
-    bvh.build(64);
+    // sequential build , all primitives are sequentially ordered
+    bvh.build(node_limit, false);
 
     for i in 1..n {
         let b1 = bvh.primitives[i].bounds();
         let b0 = bvh.primitives[i - 1].bounds();
-        assert!(b1.min.get(0) > b0.min.get(0));
+        if b1.min.get(0) < b0.min.get(0) {
+            panic!("b1:{} < b0:{}", i, i - 1);
+        }
+        assert!(b1.min.get(0) >= b0.min.get(0))
     }
 }
