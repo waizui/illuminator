@@ -407,6 +407,11 @@ impl Raycast for BVH {
 fn test_bvh_order() {
     use crate::raycast::sphere::Sphere;
     use rand::seq::SliceRandom;
+    /*
+     if n > 1024, test might fail since more than one points can map to same code,
+    radix_sort use a 30bit 10bit-per axis setting, meaning only 1024 sperated points
+    for each axis.
+    */
     let n = 1024;
     let node_limit = 17;
 
