@@ -14,6 +14,9 @@ use crate::{
 };
 use rayon::prelude::*;
 
+const N_BUCKETS: usize = 12; // efficient setting
+
+#[derive(Default)]
 pub struct BVHBuildNode {
     bounds: Bounds3f,
     axis: usize,
@@ -36,25 +39,12 @@ impl BVHBuildNode {
         self.c1 = None;
     }
 
-    pub fn init_inerior(&mut self, axis: usize, c0: Arc<BVHBuildNode>, c1: Arc<BVHBuildNode>) {
+    pub fn init_interior(&mut self, axis: usize, c0: Arc<BVHBuildNode>, c1: Arc<BVHBuildNode>) {
         self.prim_count = 0;
         self.axis = axis;
         self.bounds = c0.bounds.union(c1.bounds);
         self.c0 = Some(c0);
         self.c1 = Some(c1);
-    }
-}
-
-impl Default for BVHBuildNode {
-    fn default() -> Self {
-        BVHBuildNode {
-            bounds: Bounds3f::zero(),
-            prim_offset: 0,
-            prim_count: 0,
-            axis: 0,
-            c0: None,
-            c1: None,
-        }
     }
 }
 
@@ -196,7 +186,9 @@ impl BVH {
                 treelet_roots.push(root.clone());
             }
         });
-        self.build_sah(&treelet_roots, 0, treelets.len(), &total_nodes);
+
+        let (root, sah_created_nodes) = self.build_sah(&treelet_roots);
+        assert!(sah_created_nodes < treelet_roots.len() * 2);
 
         // swap ordered primitives and original primitives
         self.primitives = Arc::try_unwrap(ordered_prims).unwrap();
@@ -283,33 +275,125 @@ impl BVH {
             let axis = (bit_index % 3) as usize;
             unsafe {
                 let node_ptr = Arc::as_ptr(&node) as *mut BVHBuildNode;
-                (*node_ptr).init_inerior(axis, c0, c1);
+                (*node_ptr).init_interior(axis, c0, c1);
             }
 
-            (node, c0_created_nodes + c1_created_nodes)
+            (node, c0_created_nodes + c1_created_nodes + 1)
         }
     }
 
     /// build treelets node use Surface Area Heuristic
-    fn build_sah(
-        &mut self,
-        treelet_roots: &[Arc<BVHBuildNode>],
-        start: usize,
-        end: usize,
-        total_nodes: &Arc<Mutex<usize>>,
-    ) -> Arc<BVHBuildNode> {
-        let nnodes = end - start;
-        if nnodes == 1 {
-            return treelet_roots[start].clone();
+    fn build_sah(&self, treelet_roots: &[Arc<BVHBuildNode>]) -> (Arc<BVHBuildNode>, usize) {
+        if treelet_roots.len() == 1 {
+            return (treelet_roots[0].clone(), 1);
         }
 
-        let mut total_nodes = total_nodes.lock().unwrap();
-        (*total_nodes) += 1;
+        let centroid_bounds = treelet_roots.iter().fold(Bounds3f::zero(), |acc, node| {
+            acc.enlarge(node.bounds().centroid())
+        });
+        let dim = centroid_bounds.max_dim();
+        // need handle when this hits
+        assert_ne!(centroid_bounds.min.get(dim), centroid_bounds.max.get(dim));
 
-        let mut node = Arc::new(BVHBuildNode::default());
+        #[derive(Default, Clone, Copy)]
+        struct BVHSplitBucket {
+            count: usize,
+            bounds: Bounds3f,
+        }
 
-        //TODO: impl
-        node.clone()
+        let mut buckets = [BVHSplitBucket::default(); N_BUCKETS];
+
+        // init partition buckets alone max dimension
+        treelet_roots.iter().enumerate().for_each(|(i, node)| {
+            let centroid = node.bounds().centroid().get(dim);
+            let centroid_offset = (centroid - centroid_bounds.min.get(dim))
+                / (centroid_bounds.max.get(dim) - centroid_bounds.min.get(dim));
+            let mut b = ((centroid_offset) * N_BUCKETS as f32) as usize;
+            if b == N_BUCKETS {
+                b = N_BUCKETS - 1;
+            }
+
+            buckets[b].count += 1;
+            buckets[b].bounds = buckets[b].bounds.union(node.bounds());
+        });
+
+        let bounds = treelet_roots
+            .iter()
+            .fold(Bounds3f::zero(), |acc, node| node.bounds().union(acc));
+
+        // compute costs for splitting after each bucket
+        let mut cost = [0.; N_BUCKETS - 1];
+        cost.iter_mut().enumerate().for_each(|(i, c)| {
+            let (b0, c0) = buckets
+                .iter()
+                .take(i + 1)
+                .fold((Bounds3f::zero(), 0), |(b, c), bk| {
+                    (b.union(bk.bounds), c + bk.count)
+                });
+
+            let (b1, c1) = buckets
+                .iter()
+                .take(N_BUCKETS)
+                .skip(i + 1)
+                .fold((Bounds3f::zero(), 0), |(b, c), bk| {
+                    (b.union(bk.bounds), c + bk.count)
+                });
+
+            *c = 0.125 + (c0 as f32 * b0.area() + c1 as f32 * b1.area()) / bounds.area();
+        });
+
+        // find bucket to split at that minimizes SAH metric
+        let (min_cost_index, _) = cost.iter().enumerate().take(N_BUCKETS - 1).skip(1).fold(
+            (0, cost[0]),
+            |(im, m), (i, &cost)| {
+                if cost < m { (i, cost) } else { (im, m) }
+            },
+        );
+
+        // return how many elements satisfy the predicate
+        let (start, end): (Vec<_>, Vec<_>) = treelet_roots.iter().partition(|node| {
+            let centroid = node.bounds().centroid().get(dim);
+            let centroid_offset = (centroid - centroid_bounds.min.get(dim))
+                / (centroid_bounds.max.get(dim) - centroid_bounds.min.get(dim));
+
+            let mut b = ((centroid_offset) * N_BUCKETS as f32) as usize;
+            if b == N_BUCKETS {
+                b = N_BUCKETS - 1;
+            }
+
+            b <= min_cost_index
+        });
+
+        // handle corner cases, eg. all centroids located same place
+        // forcing split by fisrt element
+        let (left, right) = if start.is_empty() {
+            let left = vec![end[0].clone()];
+            let right = end[1..].iter().map(|&x| x.clone()).collect();
+            (left, right)
+        } else if end.is_empty() {
+            let left = start[..start.len() - 1]
+                .iter()
+                .map(|&x| x.clone())
+                .collect();
+            let right = vec![start[start.len() - 1].clone()];
+            (left, right)
+        } else {
+            (
+                start.iter().map(|&x| x.clone()).collect(),
+                end.iter().map(|&x| x.clone()).collect(),
+            )
+        };
+
+        let (c0, c0_created_nodes) = self.build_sah(&left);
+        let (c1, c1_created_nodes) = self.build_sah(&right);
+
+        let node = Arc::new(BVHBuildNode::default());
+        unsafe {
+            let node_ptr = Arc::as_ptr(&node) as *mut BVHBuildNode;
+            (*node_ptr).init_interior(dim, c0, c1);
+        }
+
+        (node, c0_created_nodes + c1_created_nodes + 1)
     }
 }
 

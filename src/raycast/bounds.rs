@@ -21,7 +21,7 @@ impl Bounds3f {
     }
 
     pub fn centroid(&self) -> Float3 {
-        self.min * 0.5 + self.max * 0.5
+        (self.min + self.max) * 0.5
     }
 
     pub fn union(&self, other: Bounds3f) -> Bounds3f {
@@ -40,25 +40,56 @@ impl Bounds3f {
 
     pub fn offset(&self, p: Float3) -> Float3 {
         let o = p - self.min;
-        let extent = self.max - self.min;
-
+        let d = self.diagonal();
         Float3::vec(&[
-            if extent.get(0) > 0. {
-                o.get(0) / extent.get(0)
+            if d.get(0) > 0. {
+                o.get(0) / d.get(0)
             } else {
                 o.get(0)
             },
-            if extent.get(1) > 0. {
-                o.get(1) / extent.get(1)
+            if d.get(1) > 0. {
+                o.get(1) / d.get(1)
             } else {
                 o.get(1)
             },
-            if extent.get(2) > 0. {
-                o.get(2) / extent.get(2)
+            if d.get(2) > 0. {
+                o.get(2) / d.get(2)
             } else {
                 o.get(2)
             },
         ])
+    }
+
+    pub fn diagonal(&self) -> Float3 {
+        self.max - self.min
+    }
+
+    pub fn max_dim(&self) -> usize {
+        let d = self.diagonal();
+        let x = d.get(0);
+        let y = d.get(1);
+        let z = d.get(2);
+        if x > y && x > z {
+            0
+        } else if y > z {
+            1
+        } else {
+            2
+        }
+    }
+
+    pub fn area(&self) -> f32 {
+        let d = self.diagonal();
+        let x = d.get(0);
+        let y = d.get(1);
+        let z = d.get(2);
+        2. * (x * y + x * z + y * z)
+    }
+}
+
+impl Default for Bounds3f {
+    fn default() -> Self {
+        Bounds3f::zero()
     }
 }
 
