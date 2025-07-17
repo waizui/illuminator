@@ -1,5 +1,8 @@
-use crate::core::tensor::{MAX_DIM, Tensor, TensorNum};
-use std::{fmt::Display, ops::{Add, Div, Index, Mul, Sub}, string};
+use crate::core::tensor::{MAX_DIM, Tensor, TensorNum, TensorShape};
+use std::{
+    fmt::Display,
+    ops::{Add, Div, Index, Mul, Sub},
+};
 
 impl<T: TensorNum, const N: usize> Sub for Tensor<T, N> {
     type Output = Self;
@@ -92,6 +95,18 @@ impl<T: TensorNum, const N: usize> Div<T> for Tensor<T, N> {
     }
 }
 
+impl PartialEq<TensorShape> for TensorShape {
+    fn eq(&self, other: &TensorShape) -> bool {
+        self.raw_shape == other.raw_shape
+    }
+}
+
+impl<T: TensorNum, const N: usize> PartialEq<Tensor<T, N>> for Tensor<T, N> {
+    fn eq(&self, other: &Tensor<T, N>) -> bool {
+        self.raw == other.raw && self.shape == other.shape
+    }
+}
+
 /// rust fail to recognise two index methods
 impl<T, const N: usize> Index<&[usize]> for Tensor<T, N>
 where
@@ -109,14 +124,14 @@ where
     }
 }
 
-impl<T, const N: usize> Display for Tensor<T,N>
-where T: TensorNum
+impl<T, const N: usize> Display for Tensor<T, N>
+where
+    T: TensorNum,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"todo:impl tensor fmt")
+        write!(f, "todo:impl tensor fmt")
     }
 }
-
 
 #[test]
 fn test_add() {

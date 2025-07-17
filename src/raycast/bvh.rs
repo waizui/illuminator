@@ -73,7 +73,14 @@ struct LinearBVHNode {
     bounds: Bounds3f,
     axis: usize,
     nprimitives: usize,
-    offset: usize, // primitive offset or second child offset
+    /// primitive offset or second child offset
+    offset: usize,
+}
+
+impl LinearBVHNode {
+    pub fn is_leaf(&self) -> bool {
+        self.nprimitives != 0
+    }
 }
 
 pub struct BVH {
@@ -229,7 +236,7 @@ impl BVH {
                 let vec_ptr = Arc::as_ptr(&ordered_prims) as *mut Vec<Box<dyn Primitive>>;
                 let buffer_ptr = (*vec_ptr).as_mut_ptr();
 
-                for (i, morton_prim) in morton_prims.iter().enumerate() {
+                for (i, morton_prim) in morton_prims.iter().take(nprimitives).enumerate() {
                     let org_prim_index = morton_prim.prim_index;
                     let prim_box_ptr = self.primitives[org_prim_index].clone_as_box();
                     bounds = bounds.union(prim_box_ptr.bounds());
@@ -412,6 +419,7 @@ impl BVH {
         (node, c0_created_nodes + c1_created_nodes + 1)
     }
 
+    //compact memory
     fn flatten_bvh(&mut self, root: &BVHBuildNode, offset: &mut Box<usize>) -> usize {
         let node_offset = **offset;
         **offset += 1;
@@ -465,7 +473,7 @@ fn test_bvh_order() {
     let mut rng = rand::rng();
     arr.shuffle(&mut rng);
     for &i in arr.iter() {
-        let sph = Sphere::new(Float3::vec(&[i as f32; 3]), 0.5);
+        let sph = Sphere::new(Float3::vec(&[i as f32 + 0.5; 3]), 0.5);
         bvh.push(sph);
     }
 
@@ -481,4 +489,18 @@ fn test_bvh_order() {
         assert!(b1.min.get(0) >= b0.min.get(0))
     }
 
+    let mut start = 0;
+    while start < bvh.nodes.len() - 1 {
+        let c = &bvh.nodes[start];
+        if c.is_leaf() {
+            let mut b = Bounds3f::default();
+            for i in 0..c.nprimitives {
+                let cb = bvh.primitives[c.offset + i].bounds();
+                b = cb.union(b);
+            }
+            assert_eq!(b, c.bounds);
+        }
+
+        start += 1;
+    }
 }

@@ -9,7 +9,7 @@ impl TensorNum for usize {}
 
 #[derive(Clone, Copy, Debug)]
 pub struct TensorShape {
-    raw_shape: usize,
+    pub raw_shape: usize,
 }
 
 impl TensorShape {
@@ -90,10 +90,10 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
         let shape = TensorShape::from(shape);
         Tensor { raw, shape }
     }
-    
+
     pub fn vec(arr: &[T]) -> Self {
         assert!(arr.len() <= N, "Array length out of {N} ");
-        Self::new(arr, &[1])
+        Self::new(arr, &[arr.len()])
     }
 
     pub fn dot<const RN: usize>(&self, rhs: Tensor<T, RN>) -> T {

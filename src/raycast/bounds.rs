@@ -99,6 +99,12 @@ impl Raycast for Bounds3f {
     }
 }
 
+impl PartialEq<Bounds3f> for Bounds3f {
+    fn eq(&self, other: &Bounds3f) -> bool {
+        self.min == other.min && self.max == other.max
+    }
+}
+
 #[test]
 fn test_bounds() {
     let b = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[1.; 3]));
