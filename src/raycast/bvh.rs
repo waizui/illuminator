@@ -308,7 +308,7 @@ impl BVH {
     /// build treelets node use Surface Area Heuristic
     fn build_sah(&self, treelet_roots: &[Arc<BVHBuildNode>]) -> (Arc<BVHBuildNode>, usize) {
         if treelet_roots.len() == 1 {
-            return (treelet_roots[0].clone(), 1);
+            return (treelet_roots[0].clone(), 0);
         }
 
         let centroid_bounds = treelet_roots.iter().fold(Bounds3f::zero(), |acc, node| {
@@ -492,13 +492,23 @@ fn test_bvh_order() {
     let mut start = 0;
     while start < bvh.nodes.len() - 1 {
         let c = &bvh.nodes[start];
+        let mut b = Bounds3f::default();
         if c.is_leaf() {
-            let mut b = Bounds3f::default();
             for i in 0..c.nprimitives {
                 let cb = bvh.primitives[c.offset + i].bounds();
                 b = cb.union(b);
             }
             assert_eq!(b, c.bounds);
+        } else {
+            if start + 1 < bvh.nodes.len() {
+                let c0 = &bvh.nodes[start + 1];
+                b = c0.bounds.union(b);
+            }
+            if c.offset < bvh.nodes.len() {
+                let c1 = &bvh.nodes[c.offset];
+                b = c1.bounds.union(b);
+            }
+            assert_eq!(b, c.bounds)
         }
 
         start += 1;
