@@ -21,7 +21,7 @@ pub struct BVHBuildNode {
     bounds: Bounds3f,
     axis: usize,
     prim_offset: usize,
-    prim_count: usize,
+    nprimitives: usize,
     c0: Option<Arc<BVHBuildNode>>,
     c1: Option<Arc<BVHBuildNode>>,
 }
@@ -32,7 +32,7 @@ impl BVHBuildNode {
     }
 
     pub fn init_leaf(&mut self, first: usize, n: usize, b: Bounds3f) {
-        self.prim_count += n;
+        self.nprimitives += n;
         self.prim_offset = first;
         self.bounds = b;
         self.c0 = None;
@@ -40,7 +40,7 @@ impl BVHBuildNode {
     }
 
     pub fn init_interior(&mut self, axis: usize, c0: Arc<BVHBuildNode>, c1: Arc<BVHBuildNode>) {
-        self.prim_count = 0;
+        self.nprimitives = 0;
         self.axis = axis;
         self.bounds = c0.bounds.union(c1.bounds);
         self.c0 = Some(c0);
@@ -68,9 +68,18 @@ struct Treelet {
     nodes: Vec<Arc<BVHBuildNode>>, // root node of treelet
 }
 
+#[derive(Debug, Default)]
+struct LinearBVHNode {
+    bounds: Bounds3f,
+    axis: usize,
+    nprimitives: usize,
+    offset: usize, // primitive offset or second child offset
+}
+
 pub struct BVH {
     node_prims_limit: usize, // max primitives a node can include
     primitives: Vec<Box<dyn Primitive>>,
+    nodes: Vec<LinearBVHNode>,
 }
 
 impl BVH {
@@ -78,6 +87,7 @@ impl BVH {
         BVH {
             node_prims_limit: 65,
             primitives: Vec::with_capacity(capacity),
+            nodes: Vec::new(),
         }
     }
 
@@ -169,7 +179,6 @@ impl BVH {
             );
 
             tr.root = Some(root);
-            let total_nodes = total_nodes.clone();
             let mut guard = total_nodes.lock().unwrap();
             *guard += nodes_created;
         };
@@ -189,9 +198,16 @@ impl BVH {
 
         let (root, sah_created_nodes) = self.build_sah(&treelet_roots);
         assert!(sah_created_nodes < treelet_roots.len() * 2);
+        let mut total_nodes = total_nodes.lock().unwrap();
+        *total_nodes += sah_created_nodes;
+        println!("total_nodes:{}", *total_nodes);
 
         // swap ordered primitives and original primitives
         self.primitives = Arc::try_unwrap(ordered_prims).unwrap();
+
+        self.nodes.resize_with(*total_nodes, LinearBVHNode::default);
+        let mut offset = Box::new(0);
+        self.flatten_bvh(&root, &mut offset);
     }
 
     /// returns root node of sub tree and created nodes num
@@ -395,6 +411,35 @@ impl BVH {
 
         (node, c0_created_nodes + c1_created_nodes + 1)
     }
+
+    fn flatten_bvh(&mut self, root: &BVHBuildNode, offset: &mut Box<usize>) -> usize {
+        let node_offset = **offset;
+        **offset += 1;
+        let lnode = &mut self.nodes[node_offset];
+        lnode.bounds = root.bounds;
+        // leaf
+        if root.nprimitives > 0 {
+            lnode.offset = root.prim_offset;
+            lnode.nprimitives = root.nprimitives;
+        } else {
+            // interior
+            lnode.axis = root.axis;
+            lnode.nprimitives = 0;
+
+            if let Some(c0) = &root.c0 {
+                self.flatten_bvh(c0, offset);
+            }
+
+            if let Some(c1) = &root.c1 {
+                let i = self.flatten_bvh(c1, offset);
+                // put there since borrow checker
+                let lnode = &mut self.nodes[node_offset];
+                lnode.offset = i;
+            }
+        }
+
+        node_offset
+    }
 }
 
 impl Raycast for BVH {
@@ -435,4 +480,5 @@ fn test_bvh_order() {
         }
         assert!(b1.min.get(0) >= b0.min.get(0))
     }
+
 }
