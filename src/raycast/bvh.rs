@@ -14,7 +14,8 @@ use crate::{
 };
 use rayon::prelude::*;
 
-const N_BUCKETS: usize = 12; // efficient setting
+///how many splits in sah building, efficient setting
+const N_BUCKETS: usize = 12;
 
 #[derive(Default)]
 pub struct BVHBuildNode {
@@ -102,6 +103,14 @@ impl BVH {
         self.primitives.push(Box::new(prim));
     }
 
+    pub fn bounds(&self) -> Bounds3f {
+        if !self.nodes.is_empty() {
+            self.nodes[0].bounds
+        } else {
+            Bounds3f::default()
+        }
+    }
+
     pub fn build(&mut self, prims_limit: usize, par_build: bool) {
         self.node_prims_limit = prims_limit;
         // bounds of whole bvh
@@ -134,7 +143,7 @@ impl BVH {
             let mut end = 1;
             let prims_size = morton_prims.len();
             while end <= prims_size {
-                // use hight 12 bits to cluster treelets
+                // use hight 12 bits to cluster treelets, clustering inside 16x16x16 grid
                 let mask = 0b00111111111111000000000000000000;
                 if (end == prims_size)
                     || (morton_prims[start].morton_code & mask)
@@ -207,7 +216,6 @@ impl BVH {
         assert!(sah_created_nodes < treelet_roots.len() * 2);
         let mut total_nodes = total_nodes.lock().unwrap();
         *total_nodes += sah_created_nodes;
-        println!("total_nodes:{}", *total_nodes);
 
         // swap ordered primitives and original primitives
         self.primitives = Arc::try_unwrap(ordered_prims).unwrap();
@@ -488,6 +496,27 @@ fn test_bvh_order() {
         }
         assert!(b1.min.get(0) >= b0.min.get(0))
     }
+}
+
+#[test]
+fn test_bvh_nodes() {
+    use crate::raycast::sphere::Sphere;
+    use rand::seq::SliceRandom;
+
+    let n = 1024;
+    let node_limit = 17;
+
+    let mut bvh = BVH::new(n);
+    let mut arr: Vec<usize> = (0..n).collect();
+    let mut rng = rand::rng();
+    arr.shuffle(&mut rng);
+    for &i in arr.iter() {
+        let sph = Sphere::new(Float3::vec(&[i as f32 + 0.5; 3]), 0.5);
+        bvh.push(sph);
+    }
+
+    // parallel build , primitives are sequentially ordered inside segment
+    bvh.build(node_limit, true);
 
     let mut start = 0;
     while start < bvh.nodes.len() - 1 {
