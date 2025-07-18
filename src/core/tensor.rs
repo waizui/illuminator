@@ -140,8 +140,8 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
         }
     }
 
-    pub fn get(&self, index: usize) -> T {
-        self.raw[index]
+    pub fn get(&self, i: usize) -> T {
+        self.raw[i]
     }
 }
 

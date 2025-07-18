@@ -38,9 +38,12 @@ impl Sphere {
 }
 
 impl Raycast for Sphere {
-    fn raycast(&self, ray: Ray) -> Option<Hit> {
+    fn raycast(&self, ray: &Ray) -> Option<Hit> {
         if let Some(t) = self.intersect(ray.org, ray.dir) {
-            return Some(Hit { ray, t });
+            return Some(Hit {
+                ray: ray.clone(),
+                t,
+            });
         }
         None
     }
@@ -48,7 +51,7 @@ impl Raycast for Sphere {
 
 impl Debug for Sphere {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{} {}",self.cnt,self.r)
+        write!(f, "{} {}", self.cnt, self.r)
     }
 }
 
@@ -78,7 +81,7 @@ fn test_sphere() {
         let dir = org * -1.;
         let ray = Ray::new(org, dir);
 
-        let hit = s.raycast(ray).unwrap();
+        let hit = s.raycast(&ray).unwrap();
         assert_eq!(hit.position()[&[0]], x);
         assert_eq!(hit.position()[&[1]], y);
     }

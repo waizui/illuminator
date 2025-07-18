@@ -1,5 +1,11 @@
 use num_traits::clamp;
 
+pub const MACHINE_EPSILON32: f32 = f32::EPSILON * 0.5;
+
+pub fn gamma(n: i32) -> f32 {
+    (n as f32 * MACHINE_EPSILON32) / (1. - n as f32 * MACHINE_EPSILON32)
+}
+
 /// returned value no large than size-2
 /// returens 0 if pred all false, size - 2 if all true
 /// eg: for pred of elements =2: [2,2,3]->1 ,[2,2,2]-> 1  

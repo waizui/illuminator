@@ -459,7 +459,7 @@ impl BVH {
 }
 
 impl Raycast for BVH {
-    fn raycast(&self, ray: Ray) -> Option<Hit> {
+    fn raycast(&self, ray: &Ray) -> Option<Hit> {
         todo!()
     }
 }

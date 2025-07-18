@@ -1,7 +1,6 @@
 use crate::core::tensor::Float3;
 use std::mem;
 
-/// https://pbr-book.org/4ed/Utilities/Mathematical_Infrastructure#EncodeMorton3
 pub fn encode_morton3(p: Float3) -> usize {
     let x = p.get(0) as usize;
     let y = p.get(1) as usize;
@@ -30,7 +29,6 @@ pub trait MortonCode: Default {
     fn morton_code(&self) -> usize;
 }
 
-/// https://pbr-book.org/4ed/Primitives_and_Intersection_Acceleration/Bounding_Volume_Hierarchies#RadixSort
 pub fn radix_sort(v: &mut [impl MortonCode]) {
     let mut orgv: Vec<(usize, usize)> = v
         .iter()

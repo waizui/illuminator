@@ -1,4 +1,9 @@
-use crate::{core::tensor::Float3, raycast::*};
+use std::mem;
+
+use crate::{
+    core::{math::gamma, tensor::Float3},
+    raycast::*,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Bounds3f {
@@ -94,8 +99,33 @@ impl Default for Bounds3f {
 }
 
 impl Raycast for Bounds3f {
-    fn raycast(&self, ray: Ray) -> Option<Hit> {
-        todo!()
+    fn raycast(&self, ray: &Ray) -> Option<Hit> {
+        let (mut t0, mut t1) = (0f32, ray.t_max);
+        for i in 0..3 {
+            let inv_dir = 1. / ray.dir.get(i);
+            // inside axis aligned plane x = x0, t = (x0-org_x)/dir_x
+            let mut tnear = (self.min.get(i) - ray.org.get(i)) * inv_dir;
+            let mut tfar = (self.max.get(i) - ray.org.get(i)) * inv_dir;
+            if tnear > tfar {
+                mem::swap(&mut tnear, &mut tfar);
+            }
+
+            // robust intesect
+            // TODO: explain
+            tfar *= 1. + 2. * gamma(3);
+
+            //NaN still works
+            t0 = if tnear > t0 { tnear } else { t0 };
+            t1 = if tfar < t1 { tfar } else { t1 };
+            if t0 > t1 {
+                return None;
+            }
+        }
+
+        Some(Hit {
+            ray: ray.clone(),
+            t: if t0 > 0. { t0 } else { t1 },
+        })
     }
 }
 
@@ -113,4 +143,17 @@ fn test_bounds() {
     assert_eq!(b3.min[&[0]], -1.);
     assert_eq!(b3.max[&[0]], 2.);
     assert_eq!(b.centroid()[&[0]], 0.);
+}
+
+#[test]
+fn test_hit_bounds() {
+    let b = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[1.; 3]));
+
+    let org = Float3::vec(&[-1., 0., 0.]);
+    let dir = org * -1.;
+    let ray = Ray::new(org, dir);
+
+    let h = b.raycast(&ray);
+    assert!(h.is_some());
+    assert_eq!(h.unwrap().t, 0.);
 }
