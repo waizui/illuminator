@@ -1,6 +1,7 @@
-use std::{fmt::Debug, sync::{
-    atomic::{AtomicUsize, Ordering::Relaxed}, Arc, Mutex
-}};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicUsize, Ordering::Relaxed},
+};
 
 use crate::{
     core::math::split_index,
@@ -627,6 +628,9 @@ fn test_bvh_cast() {
         assert_eq!(hit.unwrap().t, 1024. - *i as f32);
     });
 
-
-    println!("raycast {} prims bvh, {}ms",bvh.primitives.len(),sw.elapsed().as_millis());
+    println!(
+        "raycast {} prims bvh, {}ms",
+        bvh.primitives.len(),
+        sw.elapsed().as_millis()
+    );
 }
