@@ -110,7 +110,7 @@ impl Raycast for Bounds3f {
                 mem::swap(&mut tnear, &mut tfar);
             }
 
-            // robust intesect
+            // robust intersect
             // TODO: explain
             tfar *= 1. + 2. * gamma(3);
 
@@ -121,7 +121,7 @@ impl Raycast for Bounds3f {
                 return None;
             }
         }
-
+        // if org_x = x0, not intersect at x0
         Some(Hit {
             ray: ray.clone(),
             t: if t0 > 0. { t0 } else { t1 },
@@ -147,13 +147,36 @@ fn test_bounds() {
 
 #[test]
 fn test_hit_bounds() {
+    let e = 1e-4;
     let b = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[1.; 3]));
 
-    let org = Float3::vec(&[-1., 0., 0.]);
-    let dir = org * -1.;
+    // on left
+    let org = Float3::vec(&[-1. - e, 0., 0.]);
+    let dir = Float3::vec(&[1., 0., 0.]);
     let ray = Ray::new(org, dir);
 
     let h = b.raycast(&ray);
     assert!(h.is_some());
-    assert_eq!(h.unwrap().t, 0.);
+    assert!((h.unwrap().t - e).abs() < e);
+
+    // on x0
+    let org = Float3::vec(&[-1., 0., 0.]);
+    let dir = Float3::vec(&[1., 0., 0.]);
+    let ray = Ray::new(org, dir);
+
+    let h = b.raycast(&ray);
+    assert!(h.is_some());
+    assert!((h.unwrap().t - 2.) < e);
+
+    // inside
+    let org = Float3::vec(&[-1. + e, 0., 0.]);
+    let ray = Ray::new(org, dir);
+    let h = b.raycast(&ray);
+    assert!(h.is_some());
+    assert!((h.unwrap().t - 2. + e) < e);
+
+    let org = Float3::vec(&[1. + e, 0., 0.]);
+    let ray = Ray::new(org, dir);
+    let h = b.raycast(&ray);
+    assert!(h.is_none());
 }
