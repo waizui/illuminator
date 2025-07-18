@@ -1,7 +1,6 @@
-use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicUsize, Ordering::Relaxed},
-};
+use std::{fmt::Debug, sync::{
+    atomic::{AtomicUsize, Ordering::Relaxed}, Arc, Mutex
+}};
 
 use crate::{
     core::math::split_index,
@@ -465,7 +464,7 @@ impl Raycast for BVH {
         let mut cur_node_i = 0;
         let mut to_visit_i = 0;
         let mut visited_nodes = 0;
-        let mut nodes_to_visit = [0, 64];
+        let mut nodes_to_visit = [0; 64];
 
         let ray = &mut ray.clone();
 
@@ -511,7 +510,6 @@ impl Raycast for BVH {
             }
         }
 
-        dbg!(visited_nodes);
         hit
     }
 }
@@ -600,6 +598,7 @@ fn test_bvh_nodes() {
 fn test_bvh_cast() {
     use crate::raycast::sphere::Sphere;
     use rand::seq::SliceRandom;
+    use std::time::Instant;
 
     let n = 1024;
     let node_limit = 17;
@@ -608,22 +607,26 @@ fn test_bvh_cast() {
     let mut arr: Vec<usize> = (0..n).collect();
     let mut rng = rand::rng();
     arr.shuffle(&mut rng);
-    let mut rays: Vec<Ray> = Vec::new();
+    let mut rays: Vec<(usize, Ray)> = Vec::new();
     for &i in arr.iter() {
         let cnt = Float3::vec(&[i as f32 + 0.5; 3]);
         let sph = Sphere::new(cnt, 0.5);
         bvh.push(sph);
 
         let org = Float3::vec(&[i as f32 + 0.5, i as f32 + 0.5, 1025.]);
-        let dir = Float3::vec(&[0., 0., 1.]);
-        rays.push(Ray::new(org, dir));
+        let dir = Float3::vec(&[0., 0., -1.]);
+        rays.push((i, Ray::new(org, dir)));
     }
     bvh.build(node_limit, true);
 
-    for i in 1..n {
-        let ray = &rays[i];
+    let sw = Instant::now();
+
+    rays.iter().for_each(|(i, ray)| {
         let hit = bvh.raycast(ray);
         assert!(hit.is_some());
-        assert_eq!(hit.unwrap().t, 1024. - i as f32 + 1.);
-    }
+        assert_eq!(hit.unwrap().t, 1024. - *i as f32);
+    });
+
+
+    println!("raycast {} prims bvh, {}ms",bvh.primitives.len(),sw.elapsed().as_millis());
 }
