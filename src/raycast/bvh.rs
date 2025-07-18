@@ -634,3 +634,43 @@ fn test_bvh_cast() {
         sw.elapsed().as_millis()
     );
 }
+
+#[test]
+fn test_bvh_perf() {
+    use crate::raycast::sphere::Sphere;
+    use rand::seq::SliceRandom;
+    use std::time::Instant;
+
+    for n in [1024, 2048, 4096] {
+        let node_limit = 65;
+
+        let mut bvh = BVH::new(n);
+        let mut arr: Vec<usize> = (0..n).collect();
+        let mut rng = rand::rng();
+        arr.shuffle(&mut rng);
+        let mut rays: Vec<(usize, Ray)> = Vec::new();
+        for &i in arr.iter() {
+            let cnt = Float3::vec(&[i as f32 + 0.5; 3]);
+            let sph = Sphere::new(cnt, 0.5);
+            bvh.push(sph);
+
+            let org = Float3::vec(&[i as f32 + 0.5, i as f32 + 0.5, n as f32 + 1.]);
+            let dir = Float3::vec(&[0., 0., -1.]);
+            rays.push((i, Ray::new(org, dir)));
+        }
+        bvh.build(node_limit, true);
+
+        let sw = Instant::now();
+
+        rays.iter().take(1024).for_each(|(i, ray)| {
+            let hit = bvh.raycast(ray);
+            assert!(hit.is_some());
+        });
+
+        println!(
+            "raycast 1024 times, {} prims bvh, {}ms",
+            bvh.primitives.len(),
+            sw.elapsed().as_millis()
+        );
+    }
+}
