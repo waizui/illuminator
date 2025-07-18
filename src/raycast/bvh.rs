@@ -80,7 +80,7 @@ struct LinearBVHNode {
 
 impl LinearBVHNode {
     pub fn is_leaf(&self) -> bool {
-        self.nprimitives != 0
+        self.nprimitives > 0
     }
 }
 
@@ -460,7 +460,59 @@ impl BVH {
 
 impl Raycast for BVH {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
-        todo!()
+        let mut hit: Option<Hit> = None;
+
+        let mut cur_node_i = 0;
+        let mut to_visit_i = 0;
+        let mut visited_nodes = 0;
+        let mut nodes_to_visit = [0, 64];
+
+        let ray = &mut ray.clone();
+
+        loop {
+            visited_nodes += 1;
+            let node = &self.nodes[cur_node_i];
+            if node.bounds.raycast(ray).is_some() {
+                if node.is_leaf() {
+                    // cast ray with primitives
+                    for i in 0..node.nprimitives {
+                        if let Some(hit_p) = self.primitives[node.offset + i].raycast(ray) {
+                            //update t_max to find nearest primitive
+                            ray.t_max = hit_p.t;
+                            hit = Some(hit_p);
+                        }
+                    }
+                    if to_visit_i == 0 {
+                        break;
+                    }
+
+                    cur_node_i = nodes_to_visit[to_visit_i - 1];
+                    to_visit_i -= 1;
+                } else {
+                    // not leaf, put far BVH node on nodes_to_visit stack, advance to near node
+                    if ray.dir.get(node.axis) < 0. {
+                        // far node is left
+                        nodes_to_visit[to_visit_i] = cur_node_i + 1;
+                        cur_node_i = node.offset;
+                    } else {
+                        // far node is right
+                        nodes_to_visit[to_visit_i] = node.offset;
+                        cur_node_i += 1;
+                    }
+                    to_visit_i += 1;
+                }
+            } else {
+                // not hit
+                if to_visit_i == 0 {
+                    break;
+                }
+                cur_node_i = nodes_to_visit[to_visit_i - 1];
+                to_visit_i -= 1;
+            }
+        }
+
+        dbg!(visited_nodes);
+        hit
     }
 }
 
@@ -541,5 +593,37 @@ fn test_bvh_nodes() {
         }
 
         start += 1;
+    }
+}
+
+#[test]
+fn test_bvh_cast() {
+    use crate::raycast::sphere::Sphere;
+    use rand::seq::SliceRandom;
+
+    let n = 1024;
+    let node_limit = 17;
+
+    let mut bvh = BVH::new(n);
+    let mut arr: Vec<usize> = (0..n).collect();
+    let mut rng = rand::rng();
+    arr.shuffle(&mut rng);
+    let mut rays: Vec<Ray> = Vec::new();
+    for &i in arr.iter() {
+        let cnt = Float3::vec(&[i as f32 + 0.5; 3]);
+        let sph = Sphere::new(cnt, 0.5);
+        bvh.push(sph);
+
+        let org = Float3::vec(&[i as f32 + 0.5, i as f32 + 0.5, 1025.]);
+        let dir = Float3::vec(&[0., 0., 1.]);
+        rays.push(Ray::new(org, dir));
+    }
+    bvh.build(node_limit, true);
+
+    for i in 1..n {
+        let ray = &rays[i];
+        let hit = bvh.raycast(ray);
+        assert!(hit.is_some());
+        assert_eq!(hit.unwrap().t, 1024. - i as f32 + 1.);
     }
 }

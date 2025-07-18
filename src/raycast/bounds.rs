@@ -100,6 +100,7 @@ impl Default for Bounds3f {
 
 impl Raycast for Bounds3f {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
+        //TODO: branch free testing
         let (mut t0, mut t1) = (0f32, ray.t_max);
         for i in 0..3 {
             let inv_dir = 1. / ray.dir.get(i);
