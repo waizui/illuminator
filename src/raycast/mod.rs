@@ -2,6 +2,7 @@ use crate::core::tensor::Float3;
 
 pub mod bounds;
 pub mod bvh;
+pub mod bvhbuild;
 pub mod morton;
 pub mod primitive;
 pub mod sphere;
