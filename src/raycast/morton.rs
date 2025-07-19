@@ -2,9 +2,9 @@ use crate::core::tensor::Float3;
 use std::mem;
 
 pub fn encode_morton3(p: Float3) -> usize {
-    let x = p.get(0) as usize;
-    let y = p.get(1) as usize;
-    let z = p.get(2) as usize;
+    let x = p[0] as usize;
+    let y = p[1] as usize;
+    let z = p[2] as usize;
     (left_shift3(z) << 2) | (left_shift3(y) << 1) | left_shift3(x)
 }
 

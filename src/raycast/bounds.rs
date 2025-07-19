@@ -47,21 +47,9 @@ impl Bounds3f {
         let o = p - self.min;
         let d = self.diagonal();
         Float3::vec(&[
-            if d.get(0) > 0. {
-                o.get(0) / d.get(0)
-            } else {
-                o.get(0)
-            },
-            if d.get(1) > 0. {
-                o.get(1) / d.get(1)
-            } else {
-                o.get(1)
-            },
-            if d.get(2) > 0. {
-                o.get(2) / d.get(2)
-            } else {
-                o.get(2)
-            },
+            if d[0] > 0. { o[0] / d[0] } else { o[0] },
+            if d[1] > 0. { o[1] / d[1] } else { o[1] },
+            if d[2] > 0. { o[2] / d[2] } else { o[2] },
         ])
     }
 
@@ -71,9 +59,9 @@ impl Bounds3f {
 
     pub fn max_dim(&self) -> usize {
         let d = self.diagonal();
-        let x = d.get(0);
-        let y = d.get(1);
-        let z = d.get(2);
+        let x = d[0];
+        let y = d[1];
+        let z = d[2];
         if x > y && x > z {
             0
         } else if y > z {
@@ -85,9 +73,9 @@ impl Bounds3f {
 
     pub fn area(&self) -> f32 {
         let d = self.diagonal();
-        let x = d.get(0);
-        let y = d.get(1);
-        let z = d.get(2);
+        let x = d[0];
+        let y = d[1];
+        let z = d[2];
         2. * (x * y + x * z + y * z)
     }
 }
@@ -103,10 +91,10 @@ impl Raycast for Bounds3f {
         //TODO: branch free testing
         let (mut t0, mut t1) = (0f32, ray.t_max);
         for i in 0..3 {
-            let inv_dir = 1. / ray.dir.get(i);
+            let inv_dir = 1. / ray.dir[i];
             // inside axis aligned plane x = x0, t = (x0-org_x)/dir_x
-            let mut tnear = (self.min.get(i) - ray.org.get(i)) * inv_dir;
-            let mut tfar = (self.max.get(i) - ray.org.get(i)) * inv_dir;
+            let mut tnear = (self.min[i] - ray.org[i]) * inv_dir;
+            let mut tfar = (self.max[i] - ray.org[i]) * inv_dir;
             if tnear > tfar {
                 mem::swap(&mut tnear, &mut tfar);
             }
@@ -141,9 +129,9 @@ fn test_bounds() {
     let b = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[1.; 3]));
     let b1 = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[2.; 3]));
     let b3 = b.union(b1);
-    assert_eq!(b3.min[&[0]], -1.);
-    assert_eq!(b3.max[&[0]], 2.);
-    assert_eq!(b.centroid()[&[0]], 0.);
+    assert_eq!(b3.min[0], -1.);
+    assert_eq!(b3.max[0], 2.);
+    assert_eq!(b.centroid()[0], 0.);
 }
 
 #[test]

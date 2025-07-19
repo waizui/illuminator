@@ -1,4 +1,4 @@
-use crate::core::tensor::{MAX_DIM, Tensor, TensorNum, TensorShape};
+use crate::core::tensor::{Tensor, TensorNum, TensorShape};
 use std::{
     fmt::Display,
     ops::{Add, Div, Index, Mul, Sub},
@@ -107,22 +107,50 @@ impl<T: TensorNum, const N: usize> PartialEq<Tensor<T, N>> for Tensor<T, N> {
     }
 }
 
-/// rust fail to recognise two index methods
-impl<T, const N: usize> Index<&[usize]> for Tensor<T, N>
+impl<T, const N: usize> Index<usize> for Tensor<T, N>
 where
     T: TensorNum,
 {
     type Output = T;
-    fn index(&self, index: &[usize]) -> &Self::Output {
-        assert!(
-            index.len() <= MAX_DIM,
-            "Only {MAX_DIM} dimension tensor supported."
-        );
-
-        let real_i = self.shape.to_index(index);
+    fn index(&self, index: usize) -> &Self::Output {
+        let real_i = self.shape.to_index(&[index]);
         &self.raw[real_i]
     }
 }
+
+impl<T, const N: usize> Index<(usize, usize)> for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    type Output = T;
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        let real_i = self.shape.to_index(&[index.0, index.1]);
+        &self.raw[real_i]
+    }
+}
+
+impl<T, const N: usize> Index<(usize, usize, usize)> for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    type Output = T;
+    fn index(&self, index: (usize, usize, usize)) -> &Self::Output {
+        let real_i = self.shape.to_index(&[index.0, index.1, index.2]);
+        &self.raw[real_i]
+    }
+}
+
+impl<T, const N: usize> Index<(usize, usize, usize, usize)> for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    type Output = T;
+    fn index(&self, index: (usize, usize, usize, usize)) -> &Self::Output {
+        let real_i = self.shape.to_index(&[index.0, index.1, index.2, index.3]);
+        &self.raw[real_i]
+    }
+}
+
 
 impl<T, const N: usize> Display for Tensor<T, N>
 where
@@ -212,14 +240,12 @@ fn test_index() {
     use std::iter::zip;
     let t = tensor!(1.;1,2,3,4);
 
-    let i = &[0; 4];
-    assert_eq!(t[i], 1.);
+    assert_eq!(t[(0, 0, 0, 0)], 1.);
 
-    let i = &[0, 0, 0, 3];
-    assert_eq!(t[i], 1.);
+    assert_eq!(t[(0, 0, 0, 3)], 1.);
 
     let t = tensor!([1,2,3,4,5,6,7,8,9];3,3);
     for (i, j) in zip(0..2usize, 0..2usize) {
-        assert_eq!(t[&[i, j]], i * 3 + j + 1);
+        assert_eq!(t[(i, j)], i * 3 + j + 1);
     }
 }

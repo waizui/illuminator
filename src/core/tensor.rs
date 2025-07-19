@@ -13,6 +13,7 @@ pub struct TensorShape {
 }
 
 impl TensorShape {
+    /// get size at dim
     pub fn get(&self, dim: usize) -> usize {
         let shift = (MAX_DIM - 1 - dim) * 8;
         (self.raw_shape & (0xFF << shift)) >> shift
@@ -138,10 +139,6 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
             raw,
             shape: self.shape,
         }
-    }
-
-    pub fn get(&self, i: usize) -> T {
-        self.raw[i]
     }
 }
 

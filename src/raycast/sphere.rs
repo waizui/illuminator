@@ -82,15 +82,15 @@ fn test_sphere() {
         let ray = Ray::new(org, dir);
 
         let hit = s.raycast(&ray).unwrap();
-        assert_eq!(hit.position()[&[0]], x);
-        assert_eq!(hit.position()[&[1]], y);
+        assert_eq!(hit.position()[0], x);
+        assert_eq!(hit.position()[1], y);
     }
 
     let b = s.bounds();
-    assert_eq!(b.min.get(0), -1.);
-    assert_eq!(b.min.get(1), -1.);
-    assert_eq!(b.min.get(2), -1.);
-    assert_eq!(b.max.get(0), 1.);
-    assert_eq!(b.max.get(1), 1.);
-    assert_eq!(b.max.get(2), 1.);
+    assert_eq!(b.min[0], -1.);
+    assert_eq!(b.min[1], -1.);
+    assert_eq!(b.min[2], -1.);
+    assert_eq!(b.max[0], 1.);
+    assert_eq!(b.max[1], 1.);
+    assert_eq!(b.max[2], 1.);
 }

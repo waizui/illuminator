@@ -324,7 +324,7 @@ impl BVH {
         });
         let dim = centroid_bounds.max_dim();
         // need handle when this hits
-        assert_ne!(centroid_bounds.min.get(dim), centroid_bounds.max.get(dim));
+        assert_ne!(centroid_bounds.min[dim], centroid_bounds.max[dim]);
 
         #[derive(Default, Clone, Copy)]
         struct BVHSplitBucket {
@@ -336,9 +336,9 @@ impl BVH {
 
         // init partition buckets alone max dimension
         treelet_roots.iter().enumerate().for_each(|(i, node)| {
-            let centroid = node.bounds().centroid().get(dim);
-            let centroid_offset = (centroid - centroid_bounds.min.get(dim))
-                / (centroid_bounds.max.get(dim) - centroid_bounds.min.get(dim));
+            let centroid = node.bounds().centroid()[dim];
+            let centroid_offset = (centroid - centroid_bounds.min[dim])
+                / (centroid_bounds.max[dim] - centroid_bounds.min[dim]);
             let mut b = ((centroid_offset) * N_BUCKETS as f32) as usize;
             if b == N_BUCKETS {
                 b = N_BUCKETS - 1;
@@ -383,9 +383,9 @@ impl BVH {
 
         // return how many elements satisfy the predicate
         let (start, end): (Vec<_>, Vec<_>) = treelet_roots.iter().partition(|node| {
-            let centroid = node.bounds().centroid().get(dim);
-            let centroid_offset = (centroid - centroid_bounds.min.get(dim))
-                / (centroid_bounds.max.get(dim) - centroid_bounds.min.get(dim));
+            let centroid = node.bounds().centroid()[dim];
+            let centroid_offset = (centroid - centroid_bounds.min[dim])
+                / (centroid_bounds.max[dim] - centroid_bounds.min[dim]);
 
             let mut b = ((centroid_offset) * N_BUCKETS as f32) as usize;
             if b == N_BUCKETS {
@@ -490,7 +490,7 @@ impl Raycast for BVH {
                     to_visit_i -= 1;
                 } else {
                     // not leaf, put far BVH node on nodes_to_visit stack, advance to near node
-                    if ray.dir.get(node.axis) < 0. {
+                    if ray.dir[node.axis] < 0. {
                         // far node is left
                         nodes_to_visit[to_visit_i] = cur_node_i + 1;
                         cur_node_i = node.offset;
@@ -542,10 +542,10 @@ fn test_bvh_order() {
     for i in 1..n {
         let b1 = bvh.primitives[i].bounds();
         let b0 = bvh.primitives[i - 1].bounds();
-        if b1.min.get(0) < b0.min.get(0) {
+        if b1.min[0] < b0.min[0] {
             panic!("b1:{} < b0:{}", i, i - 1);
         }
-        assert!(b1.min.get(0) >= b0.min.get(0))
+        assert!(b1.min[0] >= b0.min[0])
     }
 }
 
