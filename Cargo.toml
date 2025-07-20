@@ -10,6 +10,7 @@ description = "Reserved for a tracer"
 
 [dependencies]
 anyhow = "1.0.98"
+clap = { version = "4.0", features = ["derive"] }
 image = "0.25.6"
 num-traits = "0.2.19"
 rand = "0.9.1"

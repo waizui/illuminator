@@ -273,6 +273,7 @@ impl BVH {
     }
 
     /// build treelets node use Surface Area Heuristic
+    #[allow(clippy::only_used_in_recursion)]
     fn build_sah(&self, treelet_roots: &[Arc<BVHBuildNode>]) -> (Arc<BVHBuildNode>, usize) {
         if treelet_roots.len() == 1 {
             return (treelet_roots[0].clone(), 0);
@@ -294,7 +295,7 @@ impl BVH {
         let mut buckets = [BVHSplitBucket::default(); N_BUCKETS];
 
         // init partition buckets alone max dimension
-        treelet_roots.iter().enumerate().for_each(|(i, node)| {
+        treelet_roots.iter().for_each(|node| {
             let centroid = node.bounds().centroid()[dim];
             let centroid_offset = (centroid - centroid_bounds.min[dim])
                 / (centroid_bounds.max[dim] - centroid_bounds.min[dim]);

@@ -245,7 +245,7 @@ fn test_bvh_perf() {
 
         let sw = Instant::now();
 
-        rays.iter().take(1024).for_each(|(i, ray)| {
+        rays.iter().take(1024).for_each(|(_, ray)| {
             let hit = bvh.raycast(ray);
             assert!(hit.is_some());
         });
