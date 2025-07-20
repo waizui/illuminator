@@ -6,7 +6,9 @@ authors = ["waizui <lch01234@gmail.com>"]
 license = "MIT"
 repository = "https://github.com/waizui/illuminator"
 readme = "README.md"
-description = "Reserved for a tracer"
+description = "A simple yet powerful rendering tool"
+keywords = ["rendering", "tracer","path-tracing", "ray-tracing", "graphics"]
+categories = ["graphics", "rendering"]
 
 [dependencies]
 anyhow = "1.0.98"
