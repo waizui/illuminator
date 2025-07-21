@@ -142,11 +142,11 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
     }
 }
 
-pub type Float3 = Tensor<f32, 3>;
-pub type Float3x3 = Tensor<f32, 9>;
+pub type Vec3f = Tensor<f32, 3>;
+pub type Vec3x3f = Tensor<f32, 9>;
 
-pub type Float4 = Tensor<f32, 4>;
-pub type Float4x4 = Tensor<f32, 16>;
+pub type Vec4f = Tensor<f32, 4>;
+pub type Vec4x4f = Tensor<f32, 16>;
 
 #[test]
 fn test_shape() {

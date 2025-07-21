@@ -1,18 +1,18 @@
 use std::mem;
 
 use crate::{
-    core::{math::gamma, tensor::Float3},
+    core::{math::gamma, tensor::Vec3f},
     raycast::*,
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct Bounds3f {
-    pub min: Float3,
-    pub max: Float3,
+    pub min: Vec3f,
+    pub max: Vec3f,
 }
 
 impl Bounds3f {
-    pub fn new(min: Float3, max: Float3) -> Bounds3f {
+    pub fn new(min: Vec3f, max: Vec3f) -> Bounds3f {
         Bounds3f { min, max }
     }
 
@@ -25,7 +25,7 @@ impl Bounds3f {
         }
     }
 
-    pub fn centroid(&self) -> Float3 {
+    pub fn centroid(&self) -> Vec3f {
         (self.min + self.max) * 0.5
     }
 
@@ -36,24 +36,24 @@ impl Bounds3f {
         }
     }
 
-    pub fn enlarge(&self, p: Float3) -> Bounds3f {
+    pub fn enlarge(&self, p: Vec3f) -> Bounds3f {
         Bounds3f {
             min: self.min.min(p),
             max: self.max.max(p),
         }
     }
 
-    pub fn offset(&self, p: Float3) -> Float3 {
+    pub fn offset(&self, p: Vec3f) -> Vec3f {
         let o = p - self.min;
         let d = self.diagonal();
-        Float3::vec(&[
+        Vec3f::vec(&[
             if d[0] > 0. { o[0] / d[0] } else { o[0] },
             if d[1] > 0. { o[1] / d[1] } else { o[1] },
             if d[2] > 0. { o[2] / d[2] } else { o[2] },
         ])
     }
 
-    pub fn diagonal(&self) -> Float3 {
+    pub fn diagonal(&self) -> Vec3f {
         self.max - self.min
     }
 
@@ -126,8 +126,8 @@ impl PartialEq<Bounds3f> for Bounds3f {
 
 #[test]
 fn test_bounds() {
-    let b = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[1.; 3]));
-    let b1 = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[2.; 3]));
+    let b = Bounds3f::new(Vec3f::vec(&[-1.; 3]), Vec3f::vec(&[1.; 3]));
+    let b1 = Bounds3f::new(Vec3f::vec(&[-1.; 3]), Vec3f::vec(&[2.; 3]));
     let b3 = b.union(b1);
     assert_eq!(b3.min[0], -1.);
     assert_eq!(b3.max[0], 2.);
@@ -137,11 +137,11 @@ fn test_bounds() {
 #[test]
 fn test_hit_bounds() {
     let e = 1e-4;
-    let b = Bounds3f::new(Float3::vec(&[-1.; 3]), Float3::vec(&[1.; 3]));
+    let b = Bounds3f::new(Vec3f::vec(&[-1.; 3]), Vec3f::vec(&[1.; 3]));
 
     // on left
-    let org = Float3::vec(&[-1. - e, 0., 0.]);
-    let dir = Float3::vec(&[1., 0., 0.]);
+    let org = Vec3f::vec(&[-1. - e, 0., 0.]);
+    let dir = Vec3f::vec(&[1., 0., 0.]);
     let ray = Ray::new(org, dir);
 
     let h = b.raycast(&ray);
@@ -149,8 +149,8 @@ fn test_hit_bounds() {
     assert!((h.unwrap().t - e).abs() < e);
 
     // on x0
-    let org = Float3::vec(&[-1., 0., 0.]);
-    let dir = Float3::vec(&[1., 0., 0.]);
+    let org = Vec3f::vec(&[-1., 0., 0.]);
+    let dir = Vec3f::vec(&[1., 0., 0.]);
     let ray = Ray::new(org, dir);
 
     let h = b.raycast(&ray);
@@ -158,13 +158,13 @@ fn test_hit_bounds() {
     assert!((h.unwrap().t - 2.) < e);
 
     // inside
-    let org = Float3::vec(&[-1. + e, 0., 0.]);
+    let org = Vec3f::vec(&[-1. + e, 0., 0.]);
     let ray = Ray::new(org, dir);
     let h = b.raycast(&ray);
     assert!(h.is_some());
     assert!((h.unwrap().t - 2. + e) < e);
 
-    let org = Float3::vec(&[1. + e, 0., 0.]);
+    let org = Vec3f::vec(&[1. + e, 0., 0.]);
     let ray = Ray::new(org, dir);
     let h = b.raycast(&ray);
     assert!(h.is_none());

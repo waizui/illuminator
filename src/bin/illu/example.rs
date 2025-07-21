@@ -9,7 +9,7 @@ pub fn bvh_example(save_path: Option<&str>) {
 
     let mut bvh = BVH::new(n);
     for i in (0..n).step_by(150).skip(1).take(6) {
-        let cnt = Float3::vec(&[i as f32 + 0.5; 3]);
+        let cnt = Vec3f::vec(&[i as f32 + 0.5; 3]);
         bvh.push(Sphere::new(cnt, 100.));
     }
 
@@ -28,8 +28,8 @@ pub fn bvh_example(save_path: Option<&str>) {
                 (h - ih) as f32 * n as f32 / (h - 1) as f32,
             );
 
-            let org = Float3::vec(&[x - 0.5, y - 0.5, 1025.]);
-            let dir = Float3::vec(&[0., 0., -1.]);
+            let org = Vec3f::vec(&[x - 0.5, y - 0.5, 1025.]);
+            let dir = Vec3f::vec(&[0., 0., -1.]);
             let ray = Ray::new(org, dir);
 
             if let Some(hit) = bvh.raycast(&ray) {

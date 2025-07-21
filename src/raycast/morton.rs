@@ -1,7 +1,7 @@
-use crate::core::tensor::Float3;
+use crate::core::tensor::Vec3f;
 use std::mem;
 
-pub fn encode_morton3(p: Float3) -> usize {
+pub fn encode_morton3(p: Vec3f) -> usize {
     let x = p[0] as usize;
     let y = p[1] as usize;
     let z = p[2] as usize;
@@ -140,15 +140,15 @@ fn test_inplace_map() {
 
 #[test]
 fn test_encode_morton() {
-    let p = Float3::vec(&[1.; 3]);
+    let p = Vec3f::vec(&[1.; 3]);
     let m = encode_morton3(p);
     assert_eq!(m, 7);
 
-    let p = Float3::vec(&[1., 2., 3.]);
+    let p = Vec3f::vec(&[1., 2., 3.]);
     let m = encode_morton3(p);
     assert_eq!(m, 0b110101);
 
-    let p = Float3::vec(&[1023.; 3]);
+    let p = Vec3f::vec(&[1023.; 3]);
     let m = encode_morton3(p);
     assert_eq!(m, 0b111111111111111111111111111111);
 }
@@ -172,7 +172,7 @@ fn test_radix_sort() {
     for i in 0..nm {
         let x = (i as f32 / nm as f32) * 1024.;
         let m = TestMorton {
-            morton_code: encode_morton3(Float3::vec(&[x; 3])),
+            morton_code: encode_morton3(Vec3f::vec(&[x; 3])),
             org_index: i,
         };
         ms.push(m);

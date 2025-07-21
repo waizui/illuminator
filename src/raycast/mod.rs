@@ -1,21 +1,22 @@
-use crate::core::tensor::Float3;
+use crate::core::tensor::Vec3f;
 
 pub mod bounds;
 pub mod bvh;
 pub mod bvhbuild;
+pub mod gaussian;
 pub mod morton;
 pub mod primitive;
 pub mod sphere;
 
 #[derive(Debug, Clone)]
 pub struct Ray {
-    pub org: Float3,
-    pub dir: Float3,
+    pub org: Vec3f,
+    pub dir: Vec3f,
     pub t_max: f32,
 }
 
 impl Ray {
-    pub fn new(org: Float3, dir: Float3) -> Ray {
+    pub fn new(org: Vec3f, dir: Vec3f) -> Ray {
         Ray {
             org,
             dir,
@@ -23,7 +24,7 @@ impl Ray {
         }
     }
 
-    pub fn segment(org: Float3, dir: Float3, t_max: f32) -> Ray {
+    pub fn segment(org: Vec3f, dir: Vec3f, t_max: f32) -> Ray {
         Ray { org, dir, t_max }
     }
 }
@@ -36,7 +37,7 @@ pub struct Hit {
 }
 
 impl Hit {
-    pub fn position(&self) -> Float3 {
+    pub fn position(&self) -> Vec3f {
         self.ray.org + self.ray.dir * self.t
     }
 }
