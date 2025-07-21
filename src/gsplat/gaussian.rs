@@ -1,21 +1,36 @@
 use std::{
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
 };
 
 use anyhow::{Ok, Result, anyhow};
+use bytemuck::{Pod, Zeroable};
 use ply_rs::{
     parser::{self},
     ply::{self, Encoding, Header, PropertyType},
 };
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
-    core::{quaternion::Quat, tensor::Vec3f},
-    raycast::{Hit, Ray, Raycast},
+    core::quaternion::Quat,
+    prelude::{BVH, Vec3f},
+    raycast::{Hit, Ray, Raycast, primitive::Primitive},
 };
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct InputSplat {
+    pub pos: [f32; 3],
+    pub nor: [f32; 3],
+    pub dc0: [f32; 3],
+    pub sh: [f32; 3 * 15],
+    pub opacity: f32,
+    pub scale: [f32; 3],
+    pub rot: [f32; 4],
+}
+
 #[derive(Debug, Clone, Copy)]
-pub struct Gaussian {
+pub struct Splat {
     pub pos: Vec3f,
     pub nor: Vec3f,
     pub col: Vec3f,
@@ -25,33 +40,73 @@ pub struct Gaussian {
     pub rot: Quat,
 }
 
-impl Raycast for Gaussian {
+impl Raycast for Splat {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
         todo!()
     }
 }
 
-pub struct GaussianScene {}
+impl Primitive for Splat {
+    fn bounds(&self) -> crate::raycast::bounds::Bounds3f {
+        todo!()
+    }
+
+    fn clone_as_box(&self) -> Box<dyn Primitive> {
+        todo!()
+    }
+}
+
+/// a collection of splats
+pub struct GaussianScene {
+    //TODO:build bvh
+    pub bvh: BVH,
+}
 
 impl GaussianScene {
-    pub fn read_ply(&mut self, path: &str) -> Result<Vec<Gaussian>> {
-        let f = File::open(path)?;
-        let mut reader = BufReader::new(f);
-
-        let (header, stride) = Self::read_ply_header(&mut reader)?;
-
-        let splat_count = header.elements.get("vertex").unwrap().count;
-        let splats: Vec<Gaussian> = (0..splat_count)
-            .map(|_| {
-                // TODO: parse data
+    pub fn from_ply(path: &str) -> Result<Self> {
+        let input_gs = Self::read_ply(path)?;
+        let splats: Vec<Splat> = input_gs
+            .par_iter()
+            .map(|gs| {
+                //TODO: convert
                 todo!()
             })
             .collect();
 
+        let mut bvh = BVH::new(splats.len());
+
+        (0..splats.len()).for_each(|i| {
+            bvh.push(splats[i]);
+        });
+
+        // test other prim limit
+        bvh.build(129, true);
+
+        Ok(GaussianScene { bvh })
+    }
+
+    pub fn read_ply(path: &str) -> Result<Vec<InputSplat>> {
+        let f = File::open(path)?;
+        let mut reader = BufReader::new(f);
+
+        let (header, prop_sizes) = Self::read_ply_header(&mut reader)?;
+        let stride = prop_sizes.iter().sum();
+
+        let splat_count = header.elements.get("vertex").unwrap().count;
+        let mut buf: Vec<u8> = vec![0; stride];
+        let mut splats = Vec::with_capacity(splat_count);
+
+        for _ in 0..splat_count {
+            reader.read_exact(&mut buf)?;
+            let gs: &InputSplat = bytemuck::from_bytes(&buf);
+            splats.push(*gs);
+        }
+
         Ok(splats)
     }
 
-    pub fn read_ply_header(reader: &mut impl BufRead) -> Result<(Header, usize)> {
+    /// returns data offsets array
+    pub fn read_ply_header(reader: &mut impl BufRead) -> Result<(Header, Vec<usize>)> {
         let parser = parser::Parser::<ply::DefaultElement>::new();
         let header = parser.read_header(reader)?;
         if header.encoding != Encoding::BinaryLittleEndian {
@@ -62,25 +117,26 @@ impl GaussianScene {
             .get("vertex")
             .ok_or(anyhow!("err: cannot read splat count"));
 
-        let stride = vertex?
-            .properties
-            .iter()
-            .zip(PLY_PROPERTIES.iter())
-            .try_fold(0, |acc, ((a, prop), b)| {
-                if a != *b {
-                    eprintln!("warn:unknow property name {a}");
-                }
-                Self::type_size(&prop.data_type).map(|size| acc + size)
-            });
+        let mut prop_sizes: Vec<usize> = vec![0; PLY_PROPERTIES.len()];
 
-        Ok((header, stride.ok_or(anyhow!("err:unknow data type"))?))
+        let _ = vertex?.properties.iter().try_for_each(|(name, prop)| {
+            if let Some(i) = PLY_PROPERTIES.iter().position(|&x| x == name) {
+                prop_sizes[i] = Self::type_size(&prop.data_type)
+                    .ok_or(anyhow!("err: unknow datatype{name}"))?;
+            } else {
+                eprintln!("warn:unknow property name {name}");
+            }
+
+            Ok(())
+        });
+
+        Ok((header, prop_sizes))
     }
 
     pub fn type_size(prop: &PropertyType) -> Option<usize> {
         match prop {
             ply::PropertyType::Scalar(ply::ScalarType::Float) => Some(4),
-            ply::PropertyType::Scalar(ply::ScalarType::Double) => Some(8),
-            ply::PropertyType::Scalar(ply::ScalarType::UChar) => Some(1),
+            // ply::PropertyType::Scalar(ply::ScalarType::Double) => Some(8),
             _ => None,
         }
     }

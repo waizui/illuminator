@@ -70,8 +70,9 @@ struct Treelet {
 
 // imple linear bvh build
 impl BVH {
-    pub fn build(&mut self, prims_limit: usize, par_build: bool) {
-        self.node_prims_limit = prims_limit;
+
+    pub fn build(&mut self, node_prims_limit: usize, par_build: bool) {
+        self.node_prims_limit = node_prims_limit;
         // bounds of whole bvh
         let bounds = self
             .primitives

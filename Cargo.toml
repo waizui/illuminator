@@ -12,6 +12,11 @@ categories = ["graphics", "rendering"]
 
 [dependencies]
 anyhow = "1.0.98"
+bytemuck = { version = "1.23.1",features = [
+  "derive", 
+  "extern_crate_alloc",
+  "min_const_generics",
+] }
 clap = { version = "4.0", features = ["derive"] }
 image = "0.25.6"
 num-traits = "0.2.19"
