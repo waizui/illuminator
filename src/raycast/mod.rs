@@ -3,7 +3,6 @@ use crate::core::tensor::Vec3f;
 pub mod bounds;
 pub mod bvh;
 pub mod bvhbuild;
-pub mod gaussian;
 pub mod morton;
 pub mod primitive;
 pub mod sphere;

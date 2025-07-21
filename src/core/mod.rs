@@ -1,4 +1,5 @@
 pub mod macros;
-pub mod ops;
-pub mod tensor;
 pub mod math;
+pub mod ops;
+pub mod quaternion;
+pub mod tensor;
