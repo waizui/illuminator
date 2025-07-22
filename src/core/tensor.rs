@@ -13,6 +13,20 @@ pub struct TensorShape {
 }
 
 impl TensorShape {
+    pub fn oned(size: usize) -> Self {
+        //hight 8 bits for dim 1st
+        TensorShape {
+            raw_shape: size << 24,
+        }
+    }
+
+    pub fn twod(size: [usize; 2]) -> Self {
+        //hight 8 bits for dim 1st
+        TensorShape {
+            raw_shape: (size[0] << 24) | (size[1] << 16),
+        }
+    }
+
     /// get size at dim
     pub fn get(&self, dim: usize) -> usize {
         let shift = (MAX_DIM - 1 - dim) * 8;
@@ -80,21 +94,29 @@ pub struct Tensor<T: TensorNum, const N: usize> {
 }
 
 impl<T: TensorNum, const N: usize> Tensor<T, N> {
-    pub fn new(arr: &[T], shape: &[usize]) -> Self {
+    pub fn new(arr: [T; N], shape: &[usize]) -> Self {
         let count: usize = shape.iter().fold(1, |acc, &x| {
             assert!(x < 0xFF, "Dimension limit is 0-255, now:{x}");
             acc * x
         });
         assert!(count <= N, "Elements count:{count} must less than {N}.");
 
-        let raw = std::array::from_fn(|i| arr[i]);
         let shape = TensorShape::from(shape);
-        Tensor { raw, shape }
+        Tensor { raw: arr, shape }
     }
 
-    pub fn vec(arr: &[T]) -> Self {
-        assert!(arr.len() <= N, "Array length out of {N} ");
-        Self::new(arr, &[arr.len()])
+    pub fn vec(arr: [T; N]) -> Self {
+        Tensor {
+            raw: arr,
+            shape: TensorShape::oned(N),
+        }
+    }
+
+    pub fn mat(arr: [T; N], shape: [usize; 2]) -> Self {
+        Tensor {
+            raw: arr,
+            shape: TensorShape::twod(shape),
+        }
     }
 
     pub fn dot<const RN: usize>(&self, rhs: Tensor<T, RN>) -> T {

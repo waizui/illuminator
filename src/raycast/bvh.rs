@@ -115,7 +115,7 @@ fn test_bvh_order() {
     let mut rng = rand::rng();
     arr.shuffle(&mut rng);
     for &i in arr.iter() {
-        let sph = Sphere::new(Vec3f::vec(&[i as f32 + 0.5; 3]), 0.5);
+        let sph = Sphere::new(Vec3f::vec([i as f32 + 0.5; 3]), 0.5);
         bvh.push(sph);
     }
 
@@ -145,7 +145,7 @@ fn test_bvh_nodes() {
     let mut rng = rand::rng();
     arr.shuffle(&mut rng);
     for &i in arr.iter() {
-        let sph = Sphere::new(Vec3f::vec(&[i as f32 + 0.5; 3]), 0.5);
+        let sph = Sphere::new(Vec3f::vec([i as f32 + 0.5; 3]), 0.5);
         bvh.push(sph);
     }
 
@@ -193,12 +193,12 @@ fn test_bvh_cast() {
     arr.shuffle(&mut rng);
     let mut rays: Vec<(usize, Ray)> = Vec::new();
     for &i in arr.iter() {
-        let cnt = Vec3f::vec(&[i as f32 + 0.5; 3]);
+        let cnt = Vec3f::vec([i as f32 + 0.5; 3]);
         let sph = Sphere::new(cnt, 0.5);
         bvh.push(sph);
 
-        let org = Vec3f::vec(&[i as f32 + 0.5, i as f32 + 0.5, 1025.]);
-        let dir = Vec3f::vec(&[0., 0., -1.]);
+        let org = Vec3f::vec([i as f32 + 0.5, i as f32 + 0.5, 1025.]);
+        let dir = Vec3f::vec([0., 0., -1.]);
         rays.push((i, Ray::new(org, dir)));
     }
     bvh.build(node_limit, true);
@@ -233,12 +233,12 @@ fn test_bvh_perf() {
         arr.shuffle(&mut rng);
         let mut rays: Vec<(usize, Ray)> = Vec::new();
         for &i in arr.iter() {
-            let cnt = Vec3f::vec(&[i as f32 + 0.5; 3]);
+            let cnt = Vec3f::vec([i as f32 + 0.5; 3]);
             let sph = Sphere::new(cnt, 0.5);
             bvh.push(sph);
 
-            let org = Vec3f::vec(&[i as f32 + 0.5, i as f32 + 0.5, n as f32 + 1.]);
-            let dir = Vec3f::vec(&[0., 0., -1.]);
+            let org = Vec3f::vec([i as f32 + 0.5, i as f32 + 0.5, n as f32 + 1.]);
+            let dir = Vec3f::vec([0., 0., -1.]);
             rays.push((i, Ray::new(org, dir)));
         }
         bvh.build(node_limit, true);

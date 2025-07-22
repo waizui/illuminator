@@ -14,7 +14,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use crate::{
     core::quaternion::Quat,
     prelude::{BVH, Vec3f},
-    raycast::{Hit, Ray, Raycast, primitive::Primitive},
+    raycast::{Hit, Ray, Raycast, bounds::Bounds3f, primitive::Primitive},
 };
 
 #[repr(C)]
@@ -40,19 +40,38 @@ pub struct Splat {
     pub rot: Quat,
 }
 
+impl Splat {
+    pub fn from_input(input: &InputSplat) -> Self {
+        Splat {
+            // testing
+            pos: Vec3f::vec(input.pos),
+            nor: Vec3f::vec(input.nor),
+            col: Vec3f::vec(input.dc0),
+            sh: [Vec3f::vec([0.; 3]); 15],
+            opacity: input.opacity,
+            scale: Vec3f::vec(input.scale),
+            rot: Quat::from_xyzw(input.rot[0], input.rot[1], input.rot[2], input.rot[3]),
+        }
+    }
+}
+
 impl Raycast for Splat {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
-        todo!()
+        self.bounds().raycast(ray)
     }
 }
 
 impl Primitive for Splat {
-    fn bounds(&self) -> crate::raycast::bounds::Bounds3f {
-        todo!()
+    fn bounds(&self) -> Bounds3f {
+        let one = Vec3f::vec([1.; 3]);
+        Bounds3f {
+            min: self.pos - one,
+            max: self.pos + one,
+        }
     }
 
     fn clone_as_box(&self) -> Box<dyn Primitive> {
-        todo!()
+        Box::new(*self)
     }
 }
 
@@ -65,13 +84,7 @@ pub struct GaussianScene {
 impl GaussianScene {
     pub fn from_ply(path: &str) -> Result<Self> {
         let input_gs = Self::read_ply(path)?;
-        let splats: Vec<Splat> = input_gs
-            .par_iter()
-            .map(|gs| {
-                //TODO: convert
-                todo!()
-            })
-            .collect();
+        let splats: Vec<Splat> = input_gs.par_iter().map(Splat::from_input).collect();
 
         let mut bvh = BVH::new(splats.len());
 

@@ -5,14 +5,14 @@ macro_rules! tensor {
         const N: usize = $crate::tensor!(@size $($dim),+);
         let arr = [$($val),*];
         let shape = [$($dim),+];
-        Tensor::<_, N>::new(&arr, &shape)
+        Tensor::<_, N>::new(arr, &shape)
     }};
 
     ($val:expr ; $($dim:expr),+) => {{
         const N: usize = $crate::tensor!(@size $($dim),+);
         let arr = [$val; N];
         let shape = [$($dim),+];
-        Tensor::<_, N>::new(&arr, &shape)
+        Tensor::<_, N>::new(arr, &shape)
     }};
 
     (@size $dim:expr) => {

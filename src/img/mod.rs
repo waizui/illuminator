@@ -32,3 +32,6 @@ impl<P: PixelType> Image<P> {
         &mut self.raw
     }
 }
+
+
+//TODO: texture
