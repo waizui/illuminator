@@ -41,11 +41,9 @@ impl BVH {
             Bounds3f::default()
         }
     }
-}
 
-impl Raycast for BVH {
-    fn raycast(&self, ray: &Ray) -> Option<Hit> {
-        let mut hit: Option<Hit> = None;
+    pub fn raycast_node(&self, ray: &Ray) -> Option<(Hit, usize)> {
+        let mut hit: Option<(Hit, usize)> = None;
 
         let mut cur_node_i = 0;
         let mut to_visit_i = 0;
@@ -62,7 +60,7 @@ impl Raycast for BVH {
                         if let Some(hit_p) = self.primitives[node.offset + i].raycast(ray) {
                             //update t_max to find nearest primitive
                             ray.t_max = hit_p.t;
-                            hit = Some(hit_p);
+                            hit = Some((hit_p, cur_node_i));
                         }
                     }
                     if to_visit_i == 0 {
@@ -95,6 +93,16 @@ impl Raycast for BVH {
         }
 
         hit
+    }
+}
+
+impl Raycast for BVH {
+    fn raycast(&self, ray: &Ray) -> Option<Hit> {
+        if let Some((hit, _)) = self.raycast_node(ray) {
+            Some(hit)
+        } else {
+            None
+        }
     }
 }
 
