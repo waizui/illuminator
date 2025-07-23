@@ -1,5 +1,7 @@
 use num_traits::clamp;
 
+use crate::{core::vec::Vector, prelude::Vec3f};
+
 pub const MACHINE_EPSILON32: f32 = f32::EPSILON * 0.5;
 
 pub fn gamma(n: i32) -> f32 {
@@ -20,11 +22,26 @@ where
         let mid = first + half;
         let res = pred(mid);
         first = if res { mid + 1 } else { first };
-        sz = if res { sz.saturating_sub(half + 1) } else { half };
+        sz = if res {
+            sz.saturating_sub(half + 1)
+        } else {
+            half
+        };
     }
 
     clamp(first - 1, 0, size.saturating_sub(2))
 }
+
+/// y-up, z-forward, cartesian to spherical coordinates
+pub fn xyz2spherical(xyz: Vec3f) -> Vec3f {
+    let r = xyz.magnitude();
+    assert!(r > 0f32);
+    let u = xyz.normalize();
+    let theta = u[1].acos();
+    let phi = u[0].atan2(u[2]);
+    Vec3f::vec([r, theta, phi])
+}
+
 
 #[test]
 fn test_split() {

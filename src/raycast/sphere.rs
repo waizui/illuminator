@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
-    core::tensor::Vec3f,
+    core::{math::xyz2spherical, tensor::Vec3f, vec::Vector},
     raycast::{bounds::Bounds3f, primitive::Primitive, *},
 };
 
@@ -14,6 +14,13 @@ pub struct Sphere {
 impl Sphere {
     pub fn new(cnt: Vec3f, r: f32) -> Sphere {
         Sphere { cnt, r }
+    }
+
+    /// y-up, z-forward
+    /// return local spherical coordinates of sphere
+    pub fn worldpos2sphere(&self, pos: Vec3f) -> Vec3f {
+        let v = pos - self.cnt;
+        xyz2spherical(v)
     }
 
     pub fn intersect(&self, ray_src: Vec3f, ray_dir: Vec3f) -> Option<f32> {

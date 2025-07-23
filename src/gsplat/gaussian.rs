@@ -260,7 +260,7 @@ fn test_ply_read() {
     use crate::img::*;
     use image::{Rgb, RgbImage};
 
-    let path = "./target/obj_017.ply";
+    let path = "./target/obj_011.ply";
     let gs = GaussianScene::from_ply(path).unwrap();
 
     let (w, h) = (32, 32);

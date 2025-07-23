@@ -41,7 +41,8 @@ impl TensorShape {
         }
         real_i
     }
-
+    
+    /// return how many dimensions it has
     pub fn size(&self) -> usize {
         for i in 0..MAX_DIM {
             if self.get(i) == 0 {
@@ -117,20 +118,6 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
             raw: arr,
             shape: TensorShape::twod(shape),
         }
-    }
-
-    pub fn dot<const RN: usize>(&self, rhs: Tensor<T, RN>) -> T {
-        assert!(
-            self.shape.size() == 1 || rhs.shape.size() == 1,
-            "Dot Only for 1d tensors"
-        );
-
-        assert!(N == RN, "Dot operand's length not equal");
-        let mut acc = T::zero();
-        for i in 0..N {
-            acc = acc + self.raw[i] * rhs.raw[i];
-        }
-        acc
     }
 
     pub fn min(&self, other: Self) -> Self {
