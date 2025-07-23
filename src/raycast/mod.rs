@@ -5,6 +5,7 @@ pub mod bvh;
 pub mod bvhbuild;
 pub mod morton;
 pub mod primitive;
+pub mod camera;
 pub mod sphere;
 
 #[derive(Debug, Clone)]

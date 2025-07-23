@@ -18,6 +18,7 @@ use crate::{
     raycast::{Hit, Ray, Raycast, bounds::Bounds3f, primitive::Primitive},
 };
 
+// continuous bytes gaussian splat
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct InputSplat {
@@ -28,12 +29,6 @@ pub struct InputSplat {
     pub opacity: f32,
     pub scale: [f32; 3],
     pub rot: [f32; 4],
-}
-
-impl InputSplat {
-    pub fn from_slice(dst: &[u8], dst_offset: &[u8]) -> Self {
-        todo!()
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -49,15 +44,22 @@ pub struct Splat {
 
 impl Splat {
     pub fn from_input(input: &InputSplat) -> Self {
+        const SH_C0: f32 = 0.2820948;
+        let col = Vec3f::vec(input.dc0) * SH_C0 + 0.5;
+
+        let sh = std::array::from_fn(|i| {
+            let reodered_sh = [input.sh[i], input.sh[i + 15], input.sh[i + 30]];
+            Vec3f::vec(reodered_sh)
+        });
+
         Splat {
-            // testing
             pos: Vec3f::vec(input.pos),
             nor: Vec3f::vec(input.nor),
-            col: Vec3f::vec(input.dc0),
-            sh: [Vec3f::vec([0.; 3]); 15],
+            col,
+            sh,
             opacity: input.opacity,
             scale: Vec3f::vec(input.scale),
-            rot: Quat::from_xyzw(input.rot[0], input.rot[1], input.rot[2], input.rot[3]),
+            rot: Quat::from_array(input.rot),
         }
     }
 }
@@ -111,6 +113,7 @@ impl GaussianScene {
         let f = File::open(path)?;
         let mut reader = BufReader::new(f);
 
+        // stride is in bytes
         let (header, prop_offset, stride) = Self::read_ply_header(&mut reader)?;
         let splat_count = header.elements.get("vertex").unwrap().count;
 
@@ -124,7 +127,7 @@ impl GaussianScene {
                 let base_offset = i * stride;
                 let splat_ptr = &mut splats[i] as *mut InputSplat as *mut f32;
 
-                // map every 4 bytes using prop_offset
+                // map every 4 bytes from buf to splat using prop_offset
                 (0..PLY_PROPERTIES.len()).for_each(|j| {
                     if prop_offset[j] != 0 || j == 0 {
                         // 0 is valid offset for first property
@@ -149,6 +152,7 @@ impl GaussianScene {
         if header.encoding != Encoding::BinaryLittleEndian {
             return Err(anyhow!("err: need BinaryLittleEndian"));
         }
+
         let vertex = header
             .elements
             .get("vertex")
@@ -157,6 +161,8 @@ impl GaussianScene {
         let mut prop_offset: Vec<usize> = vec![0; PLY_PROPERTIES.len()];
 
         let v = vertex?;
+        let size= std::mem::size_of::<InputSplat>();
+        println!("inputsize: {size}");
 
         let mut stride = 0;
 
@@ -257,19 +263,15 @@ fn test_ply_read() {
     let path = "./target/obj_017.ply";
     let gs = GaussianScene::from_ply(path).unwrap();
 
-    let (w, h) = (512, 512);
+    let (w, h) = (32, 32);
     let mut img: Image<Rgb<u8>> = Image::new(w, h);
-
-    let bounds = gs.bvh.bounds();
-    dbg!(bounds);
-    dbg!(gs.bvh.nodes.len());
 
     img.data_mut()
         .par_iter_mut()
         .enumerate()
         .for_each(|(i, pix)| {
             let (iw, ih) = (i % w, i / w);
-            let (lw, ly) = (8., 5.);
+            let (lw, ly) = (8., 8.);
             let (x, y) = (
                 iw as f32 * lw / (w - 1) as f32,
                 (h - ih) as f32 * ly / (h - 1) as f32,
@@ -282,8 +284,11 @@ fn test_ply_read() {
             if let Some((_, i)) = gs.bvh.raycast_node(&ray) {
                 let prim = &gs.bvh.primitives[i];
                 let splat = prim.as_any().downcast_ref::<Splat>().unwrap();
-                let col = (splat.col * 0.2820948 + 0.5) * 255.;
-                *pix = Rgb([(col[0]) as u8, (col[1]) as u8, (col[2]) as u8]);
+                let col = splat.col * 255.;
+                let r = col[0] as u8;
+                let g = col[1] as u8;
+                let b = col[2] as u8;
+                *pix = Rgb([r, g, b]);
             }
         });
 

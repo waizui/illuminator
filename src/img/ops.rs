@@ -3,37 +3,6 @@ use std::ops::{Index, IndexMut};
 
 use crate::img::*;
 
-fn uv2index<P>(img: &Image<P>, u: f32, v: f32) -> (usize, usize)
-where
-    P: PixelType,
-{
-    let iw = u * img.w as f32 - 0.5;
-    let ih = v * img.h as f32 - 0.5;
-
-    (iw as usize, ih as usize)
-}
-
-impl<P> Index<(f32, f32)> for Image<P>
-where
-    P: PixelType,
-{
-    type Output = P;
-    fn index(&self, index: (f32, f32)) -> &Self::Output {
-        let (iw, ih) = uv2index(self, index.0, index.1);
-        &self.raw[self.w * ih + iw]
-    }
-}
-
-impl<P> IndexMut<(f32, f32)> for Image<P>
-where
-    P: PixelType,
-{
-    fn index_mut(&mut self, index: (f32, f32)) -> &mut Self::Output {
-        let (iw, ih) = uv2index(self, index.0, index.1);
-        &mut self.raw[self.w * ih + iw]
-    }
-}
-
 impl<P> Index<(usize, usize)> for Image<P>
 where
     P: PixelType,

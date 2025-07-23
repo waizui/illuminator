@@ -36,10 +36,10 @@ fn test_image() {
     use image::RgbImage;
 
     let mut img = Image::from(RgbImage::new(100, 100));
-    assert_eq!(img[(0.5, 0.5)].0, [0; 3]);
+    assert_eq!(img[(49, 49)].0, [0; 3]);
 
-    img[(0.5, 0.5)] = *Rgb::from_slice(&[1; 3]);
-    assert_eq!(img[(0.5, 0.5)].0, [1; 3]);
+    img[(49, 49)] = *Rgb::from_slice(&[1; 3]);
+    assert_eq!(img[(49, 49)].0, [1; 3]);
 
     assert_eq!(img[(49, 49)].0, [1; 3]);
 
