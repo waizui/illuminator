@@ -1,6 +1,7 @@
 use std::{
     fs::File,
     io::{BufRead, BufReader, Read},
+    ptr, usize,
 };
 
 use anyhow::{Ok, Result, anyhow};
@@ -9,7 +10,7 @@ use ply_rs::{
     parser::{self},
     ply::{self, Encoding, Header, PropertyType},
 };
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::prelude::*;
 
 use crate::{
     core::quaternion::Quat,
@@ -27,6 +28,12 @@ pub struct InputSplat {
     pub opacity: f32,
     pub scale: [f32; 3],
     pub rot: [f32; 4],
+}
+
+impl InputSplat {
+    pub fn from_slice(dst: &[u8], dst_offset: &[u8]) -> Self {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -63,7 +70,7 @@ impl Raycast for Splat {
 
 impl Primitive for Splat {
     fn bounds(&self) -> Bounds3f {
-        let one = Vec3f::vec([1.; 3]);
+        let one = Vec3f::vec([0.01; 3]);
         Bounds3f {
             min: self.pos - one,
             max: self.pos + one,
@@ -77,7 +84,6 @@ impl Primitive for Splat {
 
 /// a collection of splats
 pub struct GaussianScene {
-    //TODO:build bvh
     pub bvh: BVH,
 }
 
@@ -92,7 +98,6 @@ impl GaussianScene {
             bvh.push(splats[i]);
         });
 
-        // test other prim limit
         bvh.build(129, true);
 
         Ok(GaussianScene { bvh })
@@ -102,24 +107,39 @@ impl GaussianScene {
         let f = File::open(path)?;
         let mut reader = BufReader::new(f);
 
-        let (header, prop_sizes) = Self::read_ply_header(&mut reader)?;
-        let stride = prop_sizes.iter().sum();
-
+        let (header, prop_offset, stride) = Self::read_ply_header(&mut reader)?;
         let splat_count = header.elements.get("vertex").unwrap().count;
-        let mut buf: Vec<u8> = vec![0; stride];
-        let mut splats = Vec::with_capacity(splat_count);
 
-        for _ in 0..splat_count {
-            reader.read_exact(&mut buf)?;
-            let gs: &InputSplat = bytemuck::from_bytes(&buf);
-            splats.push(*gs);
+        let mut buf: Vec<u8> = vec![0; stride * splat_count];
+        reader.read_exact(&mut buf)?;
+
+        let mut splats = vec![InputSplat::zeroed(); splat_count];
+
+        unsafe {
+            (0..splat_count).for_each(|i| {
+                let base_offset = i * stride;
+                let splat_ptr = &mut splats[i] as *mut InputSplat as *mut f32;
+
+                // map every 4 bytes using prop_offset
+                (0..PLY_PROPERTIES.len()).for_each(|j| {
+                    if prop_offset[j] != 0 || j == 0 {
+                        // 0 is valid offset for first property
+                        let buf_offset = base_offset + prop_offset[j];
+                        if buf_offset + 4 <= buf.len() {
+                            let val =
+                                ptr::read_unaligned(buf.as_ptr().add(buf_offset) as *const f32);
+                            ptr::write(splat_ptr.add(j), val);
+                        }
+                    }
+                });
+            });
         }
 
         Ok(splats)
     }
 
     /// returns data offsets array
-    pub fn read_ply_header(reader: &mut impl BufRead) -> Result<(Header, Vec<usize>)> {
+    pub fn read_ply_header(reader: &mut impl BufRead) -> Result<(Header, Vec<usize>, usize)> {
         let parser = parser::Parser::<ply::DefaultElement>::new();
         let header = parser.read_header(reader)?;
         if header.encoding != Encoding::BinaryLittleEndian {
@@ -130,27 +150,32 @@ impl GaussianScene {
             .get("vertex")
             .ok_or(anyhow!("err: cannot read splat count"));
 
-        let mut prop_sizes: Vec<usize> = vec![0; PLY_PROPERTIES.len()];
+        let mut prop_offset: Vec<usize> = vec![0; PLY_PROPERTIES.len()];
 
-        let _ = vertex?.properties.iter().try_for_each(|(name, prop)| {
-            if let Some(i) = PLY_PROPERTIES.iter().position(|&x| x == name) {
-                prop_sizes[i] = Self::type_size(&prop.data_type)
-                    .ok_or(anyhow!("err: unknow datatype{name}"))?;
+        let v = vertex?;
+
+        let mut stride = 0;
+
+        for (i, (name, prop)) in v.properties.iter().enumerate() {
+            let size = Self::type_size(&prop.data_type)?;
+
+            if let Some(j) = PLY_PROPERTIES.iter().position(|&x| x == name) {
+                prop_offset[j] = i * size;
             } else {
                 eprintln!("warn:unknow property name {name}");
             }
 
-            Ok(())
-        });
+            stride += size;
+        }
 
-        Ok((header, prop_sizes))
+        Ok((header, prop_offset, stride))
     }
 
-    pub fn type_size(prop: &PropertyType) -> Option<usize> {
+    pub fn type_size(prop: &PropertyType) -> Result<usize> {
         match prop {
-            ply::PropertyType::Scalar(ply::ScalarType::Float) => Some(4),
+            ply::PropertyType::Scalar(ply::ScalarType::Float) => Ok(4),
             // ply::PropertyType::Scalar(ply::ScalarType::Double) => Some(8),
-            _ => None,
+            _ => Err(anyhow!("err: unknow datatype")),
         }
     }
 }
@@ -219,3 +244,45 @@ const PLY_PROPERTIES: &[&str] = &[
     "rot_2",
     "rot_3",
 ];
+
+#[test]
+fn test_ply_read() {
+    use crate::img::*;
+    use image::{Rgb, RgbImage};
+
+    let path = "./target/obj_017.ply";
+    let gs = GaussianScene::from_ply(path).unwrap();
+
+    let (w, h) = (512, 512);
+    let mut img: Image<Rgb<u8>> = Image::new(w, h);
+
+    let bounds = gs.bvh.bounds();
+    dbg!(bounds);
+    dbg!(gs.bvh.nodes.len());
+
+    img.data_mut()
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, pix)| {
+            let (iw, ih) = (i % w, i / w);
+            let (lw, ly) = (8., 5.);
+            let (x, y) = (
+                iw as f32 * lw / (w - 1) as f32,
+                (h - ih) as f32 * ly / (h - 1) as f32,
+            );
+
+            let org = Vec3f::vec([x - lw / 2., y - ly / 2., 1025.]);
+            let dir = Vec3f::vec([0., 0., -1.]);
+            let ray = Ray::new(org, dir);
+
+            if let Some(hit) = gs.bvh.raycast(&ray) {
+                // let t = (hit.t * 255. / 1024.) as u8;
+                *pix = Rgb([255; 3]);
+            }
+        });
+
+    let rgbimg = RgbImage::from(img);
+    rgbimg
+        .save("./target/gs_example.png")
+        .expect("Failed to save BVH example image");
+}

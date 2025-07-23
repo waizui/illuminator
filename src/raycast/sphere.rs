@@ -40,10 +40,7 @@ impl Sphere {
 impl Raycast for Sphere {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
         if let Some(t) = self.intersect(ray.org, ray.dir) {
-            return Some(Hit {
-                ray: ray.clone(),
-                t,
-            });
+            return Some(Hit { t });
         }
         None
     }
@@ -82,8 +79,8 @@ fn test_sphere() {
         let ray = Ray::new(org, dir);
 
         let hit = s.raycast(&ray).unwrap();
-        assert_eq!(hit.position()[0], x);
-        assert_eq!(hit.position()[1], y);
+        assert_eq!(hit.position(&ray)[0], x);
+        assert_eq!(hit.position(&ray)[1], y);
     }
 
     let b = s.bounds();

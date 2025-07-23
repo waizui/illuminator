@@ -31,13 +31,12 @@ impl Ray {
 //TODO: hit multiple
 #[derive(Debug)]
 pub struct Hit {
-    pub ray: Ray,
     pub t: f32,
 }
 
 impl Hit {
-    pub fn position(&self) -> Vec3f {
-        self.ray.org + self.ray.dir * self.t
+    pub fn position(&self, ray: &Ray) -> Vec3f {
+        ray.org + ray.dir * self.t
     }
 }
 

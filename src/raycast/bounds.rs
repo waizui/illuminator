@@ -112,7 +112,6 @@ impl Raycast for Bounds3f {
         }
         // if org_x = x0, not intersect at x0
         Some(Hit {
-            ray: ray.clone(),
             t: if t0 > 0. { t0 } else { t1 },
         })
     }

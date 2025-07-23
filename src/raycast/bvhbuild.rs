@@ -70,7 +70,6 @@ struct Treelet {
 
 // imple linear bvh build
 impl BVH {
-
     pub fn build(&mut self, node_prims_limit: usize, par_build: bool) {
         self.node_prims_limit = node_prims_limit;
         // bounds of whole bvh
@@ -238,7 +237,7 @@ impl BVH {
             });
 
             split_offset += 1; //split to build subtree
-            assert!(split_offset < nprimitives - 1);
+            assert!(split_offset < nprimitives);
             assert_ne!(
                 morton_prims[split_offset - 1].morton_code & mask,
                 morton_prims[split_offset].morton_code & mask

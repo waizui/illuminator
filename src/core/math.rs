@@ -13,17 +13,17 @@ pub fn split_index<F>(size: usize, pred: F) -> usize
 where
     F: Fn(usize) -> bool,
 {
-    let (mut sz, mut first) = (size.wrapping_sub(2), 1);
+    let (mut sz, mut first) = (size.saturating_sub(2), 1);
 
     while sz > 0 {
         let half = sz >> 1;
         let mid = first + half;
         let res = pred(mid);
         first = if res { mid + 1 } else { first };
-        sz = if res { sz.wrapping_sub(half + 1) } else { half };
+        sz = if res { sz.saturating_sub(half + 1) } else { half };
     }
 
-    clamp(first - 1, 0, size.wrapping_sub(2))
+    clamp(first - 1, 0, size.saturating_sub(2))
 }
 
 #[test]
