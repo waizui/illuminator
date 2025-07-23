@@ -80,6 +80,10 @@ impl Primitive for Splat {
     fn clone_as_box(&self) -> Box<dyn Primitive> {
         Box::new(*self)
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 /// a collection of splats
@@ -275,9 +279,11 @@ fn test_ply_read() {
             let dir = Vec3f::vec([0., 0., -1.]);
             let ray = Ray::new(org, dir);
 
-            if let Some(hit) = gs.bvh.raycast(&ray) {
-                // let t = (hit.t * 255. / 1024.) as u8;
-                *pix = Rgb([255; 3]);
+            if let Some((_, i)) = gs.bvh.raycast_node(&ray) {
+                let prim = &gs.bvh.primitives[i];
+                let splat = prim.as_any().downcast_ref::<Splat>().unwrap();
+                let col = (splat.col * 0.2820948 + 0.5) * 255.;
+                *pix = Rgb([(col[0]) as u8, (col[1]) as u8, (col[2]) as u8]);
             }
         });
 

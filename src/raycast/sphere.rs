@@ -63,6 +63,10 @@ impl Primitive for Sphere {
     fn clone_as_box(&self) -> Box<dyn Primitive> {
         Box::new(self.clone())
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[test]
