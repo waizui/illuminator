@@ -5,7 +5,6 @@ use std::{
 };
 
 use anyhow::{Ok, Result, anyhow};
-use bytemuck::{Pod, Zeroable};
 use ply_rs::{
     parser::{self},
     ply::{self, Encoding, Header, PropertyType},
@@ -20,7 +19,7 @@ use crate::{
 
 // continuous bytes gaussian splat
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct InputSplat {
     pub pos: [f32; 3],
     pub nor: [f32; 3],
@@ -29,6 +28,20 @@ pub struct InputSplat {
     pub opacity: f32,
     pub scale: [f32; 3],
     pub rot: [f32; 4],
+}
+
+impl Default for InputSplat {
+    fn default() -> Self {
+        InputSplat {
+            pos: [0.; 3],
+            nor: [0.; 3],
+            dc0: [0.; 3],
+            sh: [0.; 3 * 15],
+            opacity: 0.,
+            scale: [0.; 3],
+            rot: [0.; 4],
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -120,7 +133,7 @@ impl GaussianScene {
         let mut buf: Vec<u8> = vec![0; stride * splat_count];
         reader.read_exact(&mut buf)?;
 
-        let mut splats = vec![InputSplat::zeroed(); splat_count];
+        let mut splats = vec![InputSplat::default(); splat_count];
 
         unsafe {
             (0..splat_count).for_each(|i| {
@@ -161,7 +174,7 @@ impl GaussianScene {
         let mut prop_offset: Vec<usize> = vec![0; PLY_PROPERTIES.len()];
 
         let v = vertex?;
-        let size= std::mem::size_of::<InputSplat>();
+        let size = std::mem::size_of::<InputSplat>();
         println!("inputsize: {size}");
 
         let mut stride = 0;
