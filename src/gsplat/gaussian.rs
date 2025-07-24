@@ -18,7 +18,7 @@ pub struct Splat {
 
 impl Splat {
     pub fn from_input(input: &InputSplat) -> Self {
-        const SH_C0: f32 = 0.2820948;
+        // const SH_C0: f32 = 0.2820948;
         // let col = Vec3f::vec(input.dc0) * SH_C0 + 0.5;
         let col = Vec3f::vec(input.dc0);
 

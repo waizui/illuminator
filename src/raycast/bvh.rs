@@ -60,7 +60,7 @@ impl BVH {
                         if let Some(hit_p) = self.primitives[node.offset + i].raycast(ray) {
                             //update t_max to find nearest primitive
                             ray.t_max = hit_p.t;
-                            hit = Some((hit_p, cur_node_i));
+                            hit = Some((hit_p, node.offset + i));
                         }
                     }
                     if to_visit_i == 0 {

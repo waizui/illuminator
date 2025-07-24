@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader, Read, Seek},
     ptr,
 };
 
@@ -48,18 +48,19 @@ pub fn read_ply(path: &str) -> Result<Vec<InputSplat>> {
     let mut buf: Vec<u8> = vec![0; stride * splat_count];
     reader.read_exact(&mut buf)?;
 
-    let mut splats = vec![InputSplat::default(); splat_count];
+    let splats = vec![InputSplat::default(); splat_count];
 
     unsafe {
+        let base_prt = splats.as_ptr();
         (0..splat_count).for_each(|i| {
-            let base_offset = i * stride;
-            let splat_ptr = &mut splats[i] as *mut InputSplat as *mut f32;
+            let buf_base_offset = i * stride;
+            let splat_ptr = base_prt.add(i) as *mut f32;
 
             // map every 4 bytes from buf to splat using prop_offset
             (0..PLY_PROPERTIES.len()).for_each(|j| {
                 if prop_offset[j] != 0 || j == 0 {
                     // 0 is valid offset for first property
-                    let buf_offset = base_offset + prop_offset[j];
+                    let buf_offset = buf_base_offset + prop_offset[j];
                     if buf_offset + 4 <= buf.len() {
                         let val = ptr::read_unaligned(buf.as_ptr().add(buf_offset) as *const f32);
                         ptr::write(splat_ptr.add(j), val);
@@ -180,4 +181,19 @@ const PLY_PROPERTIES: &[&str] = &[
 ];
 
 #[test]
-fn test_ply_read() {}
+fn test_ply_read() {
+    let path = "./target/obj_011.ply";
+
+    let splats0 = read_ply(path).unwrap();
+    let splats1 = read_ply(path).unwrap();
+
+    let same = splats0.iter().zip(splats1.iter()).all(|(s0, s1)| {
+        s0.opacity == s1.opacity
+            && s0.scale == s1.scale
+            && s0.pos == s1.pos
+            && s0.dc0 == s1.dc0
+            && s0.sh == s1.sh
+    });
+
+    assert!(same);
+}
