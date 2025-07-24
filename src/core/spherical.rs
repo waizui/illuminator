@@ -183,9 +183,9 @@ where
 }
 
 /// reconstruc one value
-pub fn sh_reconstruct_one<T>(coeffs: &[f32], l: i32, dir: Vec3f) -> T
+pub fn sh_reconstruct_one<T>(coeffs: &[T], l: i32, dir: Vec3f) -> T
 where
-    T: Add<f32, Output = T> + NumOps + Default + Send + Sync + Clone,
+    T: Add<T, Output = T> + Mul<f32, Output = T> + Default + Send + Sync + Clone,
 {
     let sph = xyz2spherical(dir);
     let theta = sph[1];
@@ -197,7 +197,7 @@ where
         for im in -il..il + 1 {
             let sh = sh_eval(il, im, theta, phi);
             let ic = (il * (il + 1) + im) as usize;
-            let coeff = coeffs[ic];
+            let coeff = coeffs[ic].clone();
             // sum all products of projected coefficient multipled by respective SH basis
             res = res + coeff * sh;
         }
