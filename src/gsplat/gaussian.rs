@@ -276,7 +276,7 @@ fn test_ply_read() {
     let path = "./target/obj_011.ply";
     let gs = GaussianScene::from_ply(path).unwrap();
 
-    let (w, h) = (32, 32);
+    let (w, h) = (256, 256);
     let mut img: Image<Rgb<u8>> = Image::new(w, h);
 
     img.data_mut()
