@@ -4,3 +4,5 @@ pub mod ops;
 pub mod quaternion;
 pub mod tensor;
 pub mod vec;
+pub mod sampling;
+pub mod primes;

@@ -13,14 +13,14 @@ pub struct TensorShape {
 }
 
 impl TensorShape {
-    pub fn oned(size: usize) -> Self {
+    pub fn onedim(size: usize) -> Self {
         //hight 8 bits for dim 1st
         TensorShape {
             raw_shape: size << 24,
         }
     }
 
-    pub fn twod(size: [usize; 2]) -> Self {
+    pub fn twodim(size: [usize; 2]) -> Self {
         //hight 8 bits for dim 1st
         TensorShape {
             raw_shape: (size[0] << 24) | (size[1] << 16),
@@ -41,7 +41,7 @@ impl TensorShape {
         }
         real_i
     }
-    
+
     /// return how many dimensions it has
     pub fn size(&self) -> usize {
         for i in 0..MAX_DIM {
@@ -109,15 +109,19 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
     pub fn vec(arr: [T; N]) -> Self {
         Tensor {
             raw: arr,
-            shape: TensorShape::oned(N),
+            shape: TensorShape::onedim(N),
         }
     }
 
     pub fn mat(arr: [T; N], shape: [usize; 2]) -> Self {
         Tensor {
             raw: arr,
-            shape: TensorShape::twod(shape),
+            shape: TensorShape::twodim(shape),
         }
+    }
+
+    pub fn reshape(&mut self, shape: &[usize]) {
+        self.shape = TensorShape::from(shape);
     }
 
     pub fn min(&self, other: Self) -> Self {
@@ -148,6 +152,16 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
             raw,
             shape: self.shape,
         }
+    }
+}
+
+impl<T, const N: usize> Default for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    fn default() -> Self {
+        let t = T::zero();
+        Self::vec([t; N])
     }
 }
 
