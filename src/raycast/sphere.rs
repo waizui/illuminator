@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
-    core::{math::xyz2spherical, tensor::Vec3f, vec::Vector},
+    core::{spherical::xyz2spherical, tensor::Vec3f, vec::Vector},
     raycast::{bounds::Bounds3f, primitive::Primitive, *},
 };
 

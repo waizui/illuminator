@@ -20,7 +20,7 @@ impl<T: TensorNum + Float, const N: usize> Vector<T, N> for Tensor<T, N> {
     }
 
     fn sqrmagnitude(&self) -> T {
-        (0..N).fold(T::zero(), |acc, i| self[i] + acc)
+        (0..N).fold(T::zero(), |acc, i| self[i] * self[i] + acc)
     }
 
     fn normalize(&self) -> Tensor<T, N> {

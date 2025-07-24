@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::{BufRead, BufReader, Read},
-    ptr, usize,
+    ptr,
 };
 
 use anyhow::{Ok, Result, anyhow};
@@ -276,7 +276,7 @@ fn test_ply_read() {
     let path = "./target/obj_011.ply";
     let gs = GaussianScene::from_ply(path).unwrap();
 
-    let (w, h) = (256, 256);
+    let (w, h) = (512, 512);
     let mut img: Image<Rgb<u8>> = Image::new(w, h);
 
     img.data_mut()
@@ -297,11 +297,10 @@ fn test_ply_read() {
             if let Some((_, i)) = gs.bvh.raycast_node(&ray) {
                 let prim = &gs.bvh.primitives[i];
                 let splat = prim.as_any().downcast_ref::<Splat>().unwrap();
-                let col = splat.col * 255.;
-                let r = col[0] as u8;
-                let g = col[1] as u8;
-                let b = col[2] as u8;
-                *pix = Rgb([r, g, b]);
+                let r = splat.col[0];
+                let g = splat.col[1];
+                let b = splat.col[2];
+                *pix = Rgb([(r * 255.) as u8, (g * 255.) as u8, (b * 255.) as u8]);
             }
         });
 
