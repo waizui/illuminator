@@ -35,11 +35,10 @@ impl TensorShape {
 
     /// to flatten index
     pub fn to_index(&self, index: &[usize]) -> usize {
-        let mut real_i = 0usize;
-        for (dim, &i) in index.iter().enumerate() {
-            real_i += i * self.stride(dim);
-        }
-        real_i
+        index
+            .iter()
+            .enumerate()
+            .fold(0, |acc, (dim, &i)| acc + i * self.stride(dim))
     }
 
     /// return how many dimensions it has
@@ -54,11 +53,7 @@ impl TensorShape {
     }
 
     fn stride(&self, dim: usize) -> usize {
-        let mut acc = 1;
-        for i in dim..self.size() - 1 {
-            acc *= self.get(i);
-        }
-        acc
+        (dim + 1..self.size()).fold(1, |acc, i| acc * self.get(i))
     }
 }
 
