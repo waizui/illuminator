@@ -5,6 +5,10 @@ where
     T: TensorNum,
 {
     fn matmul<const ON: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, ON>;
+    /// matmul for 1d vector
+    fn matmulvec<const ON: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, ON> {
+        self.matmul(rhs.reshaped(&[NR, 1])).reshaped(&[ON])
+    }
 }
 
 impl<T, const N: usize, const NR: usize> Matrix<T, N, NR> for Tensor<T, N>
@@ -13,15 +17,9 @@ where
 {
     fn matmul<const NO: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, NO> {
         let size_l = self.shape.size();
-        debug_assert_eq!(size_l, 2);
-
         let size_r = rhs.shape.size();
-        debug_assert!(size_l < 3 && size_r < 3);
-        let rhs = if size_r == 1 {
-            rhs.reshaped(&[rhs.shape.get(0), 1])
-        } else {
-            rhs
-        };
+        debug_assert_eq!(size_l, 2);
+        debug_assert_eq!(size_r, 2);
 
         let (row_l, col_l) = (self.shape.get(0), self.shape.get(1));
         let (row_r, col_r) = (rhs.shape.get(0), rhs.shape.get(1));
@@ -48,7 +46,12 @@ fn test_matrix() {
     use crate::prelude::{Mat3x3f, Vec3f};
 
     let m = Mat3x3f::mat([3, 3], [1., 0., 0., 0., 1., 0., 0., 0., 1.]);
+
+    let rhs = Vec3f::vec([2.; 3]).reshaped(&[3, 1]);
+    let re = m.matmul(rhs);
+    assert_eq!(re, rhs);
+
     let v = Vec3f::vec([2.; 3]);
-    let mv = m.matmul(v);
-    assert_eq!(mv.reshaped(&[3]), v)
+    let re = m.matmulvec(v);
+    assert_eq!(re, v);
 }
