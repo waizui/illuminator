@@ -7,7 +7,7 @@ use std::{
 
 /// y-up, z-forward, cartesian to spherical coordinates [r, theta,phi]
 pub fn xyz2spherical(xyz: Vec3f) -> Vec3f {
-    let r = xyz.magnitude();
+    let r = xyz.norm();
     assert!(r > 0f32);
     let u = xyz.normalize();
     let theta = u[1].acos();

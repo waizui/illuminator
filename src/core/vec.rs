@@ -1,11 +1,10 @@
 use num_traits::Float;
-
 use crate::core::tensor::{Tensor, TensorNum};
 
 pub trait Vector<T: TensorNum, const N: usize> {
-    fn sqrmagnitude(&self) -> T;
+    fn sqrnorm(&self) -> T;
 
-    fn magnitude(&self) -> T;
+    fn norm(&self) -> T;
 
     fn normalize(&self) -> Tensor<T, N>;
 
@@ -15,16 +14,16 @@ pub trait Vector<T: TensorNum, const N: usize> {
 }
 
 impl<T: TensorNum + Float, const N: usize> Vector<T, N> for Tensor<T, N> {
-    fn magnitude(&self) -> T {
-        self.sqrmagnitude().sqrt()
+    fn norm(&self) -> T {
+        self.sqrnorm().sqrt()
     }
 
-    fn sqrmagnitude(&self) -> T {
+    fn sqrnorm(&self) -> T {
         (0..N).fold(T::zero(), |acc, i| self[i] * self[i] + acc)
     }
 
     fn normalize(&self) -> Tensor<T, N> {
-        *self * (T::one() / self.magnitude())
+        *self * (T::one() / self.norm())
     }
 
     fn dot(&self, rhs: Tensor<T, N>) -> T {

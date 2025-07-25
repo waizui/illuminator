@@ -1,9 +1,10 @@
 pub mod macros;
 pub mod math;
+pub mod matrix;
 pub mod ops;
+pub mod primes;
 pub mod quaternion;
+pub mod sampling;
+pub mod spherical;
 pub mod tensor;
 pub mod vec;
-pub mod sampling;
-pub mod primes;
-pub mod spherical;

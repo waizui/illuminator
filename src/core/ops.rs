@@ -1,7 +1,7 @@
 use crate::core::tensor::{Tensor, TensorNum, TensorShape};
 use std::{
     fmt::Display,
-    ops::{Add, Div, Index, Mul, Sub},
+    ops::{Add, Div, Index, IndexMut, Mul, Sub},
 };
 
 impl<T: TensorNum, const N: usize> Sub for Tensor<T, N> {
@@ -129,6 +129,16 @@ where
     }
 }
 
+impl<T, const N: usize> IndexMut<(usize, usize)> for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        let real_i = self.shape.to_index(&[index.0, index.1]);
+        &mut self.raw[real_i]
+    }
+}
+
 impl<T, const N: usize> Index<(usize, usize, usize)> for Tensor<T, N>
 where
     T: TensorNum,
@@ -150,7 +160,6 @@ where
         &self.raw[real_i]
     }
 }
-
 
 impl<T, const N: usize> Display for Tensor<T, N>
 where

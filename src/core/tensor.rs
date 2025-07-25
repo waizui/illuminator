@@ -96,33 +96,42 @@ pub struct Tensor<T: TensorNum, const N: usize> {
 
 impl<T: TensorNum, const N: usize> Tensor<T, N> {
     pub fn new(arr: [T; N], shape: &[usize]) -> Self {
+        // macro
         let count: usize = shape.iter().fold(1, |acc, &x| {
-            assert!(x < 0xFF, "Dimension limit is 0-255, now:{x}");
+            debug_assert!(x < 0xFF, "Dimension limit is 0-255, now:{x}");
             acc * x
         });
-        assert!(count <= N, "Elements count:{count} must less than {N}.");
+        debug_assert!(count <= N, "Elements count:{count} must less than {N}.");
 
         let shape = TensorShape::from(shape);
-        Tensor { raw: arr, shape }
+        Self { raw: arr, shape }
     }
 
     pub fn vec(arr: [T; N]) -> Self {
-        Tensor {
+        Self {
             raw: arr,
             shape: TensorShape::onedim(N),
         }
     }
-    
+
     /// row major matrix
     pub fn mat(arr: [T; N], shape: [usize; 2]) -> Self {
-        Tensor {
+        Self {
             raw: arr,
             shape: TensorShape::twodim(shape),
         }
     }
 
     pub fn reshape(&mut self, shape: &[usize]) {
+        //TODO:check shape
         self.shape = TensorShape::from(shape);
+    }
+
+    pub fn reshaped(&self, shape: &[usize]) -> Self {
+        Self {
+            raw: self.raw,
+            shape: TensorShape::from(shape),
+        }
     }
 
     pub fn min(&self, other: Self) -> Self {

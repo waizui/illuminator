@@ -1,13 +1,13 @@
 use std::ops::Mul;
 
 use crate::{
-    core::vec::Vector,
+    core::{matrix::Matrix, vec::Vector},
     prelude::{Mat3x3f, Vec3f},
 };
 
 pub type Quat = Quaternion;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quaternion {
     w: f32,
     i: f32,
@@ -38,7 +38,7 @@ impl Quaternion {
         Self::wxyz(1., 0., 0., 0.)
     }
 
-    /// rotate degree around axis
+    /// rotation of degree around axis
     pub fn angle_axis(degree: f32, axis: Vec3f) -> Self {
         let rad = degree.to_radians();
         let (cos, sin) = ((rad * 0.5).cos(), (rad * 0.5).sin());
@@ -46,7 +46,7 @@ impl Quaternion {
         Self::wxyz(cos, v[0], v[1], v[2])
     }
 
-    /// rotate around x,y,z axis
+    /// rotation around x,y,z axis
     pub fn euler(x: f32, y: f32, z: f32) -> Self {
         let mut q = if x == 0. {
             Self::angle_axis(x, Vec3f::vec([1., 0., 0.]))
@@ -65,6 +65,22 @@ impl Quaternion {
         }
 
         q
+    }
+
+    pub fn normalize(&self) -> Self {
+        let (w, i, j, k) = (self.w, self.i, self.j, self.k);
+        let norm = i * i + j * j + k * k;
+        Self::wxyz(w / norm, i / norm, j / norm, k / norm)
+    }
+
+    pub fn rotate(&self, degree: f32, axis: Vec3f) -> Self {
+        let q = Self::angle_axis(degree, axis);
+        q * (*self)
+    }
+
+    /// rotate a vector or point
+    pub fn transform_vec(&self, vec: Vec3f) -> Vec3f {
+        self.to_matrix().matmul(vec)
     }
 
     pub fn conjugate(&self) -> Self {
@@ -92,4 +108,22 @@ impl Mul<Quaternion> for Quaternion {
         let k = self.w * rhs.k + rhs.w * self.k + self.i * rhs.j - self.j * rhs.i; //a1d2+a2d1+b1c2−c1b2
         Self::wxyz(w, i, j, k)
     }
+}
+
+#[test]
+fn test_quaternion() {
+    let (d, a) = (60., Vec3f::vec([1., 0., 0.]));
+
+    let q = Quat::identity();
+    let qr = q.rotate(d, a);
+    assert_eq!(qr.w, 30f32.to_radians().cos());
+
+    let q = Quat::identity();
+    let qr = q.rotate(d, a).rotate(-d, a);
+    assert_eq!(q, qr);
+
+    let v = Vec3f::vec([0., 1., 0.]);
+    let vr = q.transform_vec(v);
+
+    assert_eq!(vr[1], 0.5f32);
 }
