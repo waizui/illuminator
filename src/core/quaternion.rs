@@ -80,7 +80,7 @@ impl Quaternion {
 
     /// rotate a vector or point
     pub fn transform_vec(&self, vec: Vec3f) -> Vec3f {
-        self.to_matrix().matmul(vec)
+        self.to_matrix().matmul(vec).reshaped(&[3])
     }
 
     pub fn conjugate(&self) -> Self {
@@ -91,11 +91,13 @@ impl Quaternion {
     #[rustfmt::skip]
     pub fn to_matrix(&self) -> Mat3x3f {
         let (r,i,j,k) = (self.w,self.i,self.j,self.k);
-        Mat3x3f::mat([
+        Mat3x3f::mat([3,3],
+        [
            1. - 2. * (j * j + k * k), 2. * (i * j - r * k), 2.* (i * k + r * j),
            2. * (i * j + r * k), 1. - 2. * (i * i + k * k), 2. * (j * k - r * i),
            2. * (i * k - r * j), 2. * (j * k + r * i), 1. - 2. * (i * i + j * j),
-        ], [3,3])
+        ]
+        )
     }
 }
 
@@ -123,7 +125,7 @@ fn test_quaternion() {
     assert_eq!(q, qr);
 
     let v = Vec3f::vec([0., 1., 0.]);
-    let vr = q.transform_vec(v);
+    let vr = q.rotate(d, a).transform_vec(v);
 
     assert_eq!(vr[1], 0.5f32);
 }

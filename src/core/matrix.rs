@@ -27,7 +27,7 @@ where
         let (row_r, col_r) = (rhs.shape.get(0), rhs.shape.get(1));
         debug_assert_eq!(col_l, row_r);
 
-        let mut res = Tensor::new([T::zero(); NO], &[row_l, col_r]);
+        let mut res = Tensor::new(&[row_l, col_r], [T::zero(); NO]);
 
         for i in 0..row_l {
             for j in 0..col_r {
@@ -46,7 +46,8 @@ where
 #[test]
 fn test_matrix() {
     use crate::prelude::{Mat3x3f, Vec3f};
-    let m = Mat3x3f::mat([1., 0., 0., 0., 1., 0., 0., 0., 1.], [3, 3]);
+
+    let m = Mat3x3f::mat([3, 3], [1., 0., 0., 0., 1., 0., 0., 0., 1.]);
     let v = Vec3f::vec([2.; 3]);
     let mv = m.matmul(v);
     assert_eq!(mv.reshaped(&[3]), v)

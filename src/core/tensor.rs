@@ -13,20 +13,6 @@ pub struct TensorShape {
 }
 
 impl TensorShape {
-    pub fn onedim(size: usize) -> Self {
-        //hight 8 bits for dim 1st
-        TensorShape {
-            raw_shape: size << 24,
-        }
-    }
-
-    pub fn twodim(size: [usize; 2]) -> Self {
-        //hight 8 bits for dim 1st
-        TensorShape {
-            raw_shape: (size[0] << 24) | (size[1] << 16),
-        }
-    }
-
     /// get size at dim
     pub fn get(&self, dim: usize) -> usize {
         let shift = (MAX_DIM - 1 - dim) * 8;
@@ -81,8 +67,8 @@ impl From<&[usize]> for TensorShape {
     }
 }
 
-/// simple stack-alloc tensor
-/// sadlly 3 floats array will use ptr instead of registers: https://mcyoung.xyz/2024/04/17/calling-convention/
+/// small stack-alloc tensor
+// sadlly 3 floats array will use ptr instead of registers: https://mcyoung.xyz/2024/04/17/calling-convention/
 #[derive(Clone, Copy, Debug)]
 pub struct Tensor<T: TensorNum, const N: usize> {
     pub raw: [T; N],
@@ -90,31 +76,24 @@ pub struct Tensor<T: TensorNum, const N: usize> {
 }
 
 impl<T: TensorNum, const N: usize> Tensor<T, N> {
-    pub fn new(arr: [T; N], shape: &[usize]) -> Self {
-        // macro
-        let count: usize = shape.iter().fold(1, |acc, &x| {
-            debug_assert!(x < 0xFF, "Dimension limit is 0-255, now:{x}");
-            acc * x
-        });
-        debug_assert!(count <= N, "Elements count:{count} must less than {N}.");
+    pub fn new(shape: &[usize], arr: [T; N]) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            let count: usize = shape.iter().product();
+            debug_assert!(count <= N, "Elements count:{count} must less than {N}.");
+        }
 
         let shape = TensorShape::from(shape);
         Self { raw: arr, shape }
     }
 
     pub fn vec(arr: [T; N]) -> Self {
-        Self {
-            raw: arr,
-            shape: TensorShape::onedim(N),
-        }
+        Self::new(&[N], arr)
     }
 
     /// row major matrix
-    pub fn mat(arr: [T; N], shape: [usize; 2]) -> Self {
-        Self {
-            raw: arr,
-            shape: TensorShape::twodim(shape),
-        }
+    pub fn mat(shape: [usize; 2], arr: [T; N]) -> Self {
+        Self::new(&shape, arr)
     }
 
     pub fn reshape(&mut self, shape: &[usize]) {
