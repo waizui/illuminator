@@ -1,5 +1,7 @@
+const SH_C0: f32 = 0.2820948;
+
 use crate::{
-    core::quaternion::Quat,
+    core::{quaternion::Quat, spherical::sh_reconstruct_one},
     gsplat::io::InputSplat,
     prelude::Vec3f,
     raycast::{Hit, Ray, Raycast, bounds::Bounds3f, primitive::Primitive},
@@ -18,9 +20,7 @@ pub struct Splat {
 
 impl Splat {
     pub fn from_input(input: &InputSplat) -> Self {
-        // const SH_C0: f32 = 0.2820948;
-        // let col = Vec3f::vec(input.dc0) * SH_C0 + 0.5;
-        let col = Vec3f::vec(input.dc0);
+        let col = Vec3f::vec(input.dc0) * SH_C0 + 0.5;
 
         let sh = std::array::from_fn(|i| {
             let reodered_sh = [input.sh[i], input.sh[i + 15], input.sh[i + 30]];
@@ -34,13 +34,27 @@ impl Splat {
             sh,
             opacity: input.opacity,
             scale: Vec3f::vec(input.scale),
-            rot: Quat::from_array(input.rot),
+            rot: Quat::new(input.rot),
         }
+    }
+
+    /// l: sh degree, max is 3
+    pub fn sh_color(&self, l: i32, dir: Vec3f) -> Vec3f {
+        assert!(l <= 3);
+        let n = ((l + 1) * (l + 1)) as usize;
+        let mut coeffs: Vec<Vec3f> = Vec::with_capacity(n);
+        let c0 = (self.col - 0.5) / SH_C0;
+        coeffs.push(c0);
+        (0..n - 1).for_each(|i| coeffs.push(self.sh[i]));
+
+        let rgb: Vec3f = sh_reconstruct_one(&coeffs, l, dir);
+        rgb + 0.5
     }
 }
 
 impl Raycast for Splat {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
+        //TODO: icosahedron
         self.bounds().raycast(ray)
     }
 }

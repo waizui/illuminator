@@ -1,5 +1,5 @@
 use crate::{core::vec::Vector, prelude::Vec3f};
-use num_traits::NumOps;
+use num_traits::{NumOps, Zero};
 use std::{
     f32::consts::PI,
     ops::{Add, Mul},
@@ -131,20 +131,20 @@ pub fn sh_samples(nsamples: usize, l: i32) -> Vec<SHSample> {
     samples
 }
 
-/// project  spherical function f to sh basis
+/// project spherical function f to sh basis
 pub fn sh_project_fn<F, T>(l: i32, nsamples: usize, f: F) -> Vec<T>
 where
-    T: Mul<f32, Output = T> + NumOps + Send + Sync + Clone,
+    T: Mul<f32, Output = T> + NumOps + Zero + Send + Sync + Clone,
     F: Fn(Vec3f) -> T + Sync,
 {
     use rayon::prelude::*;
     let sh_samples = sh_samples(nsamples, l);
-    let def_val = f(Vec3f::vec([0.; 3]));
-    let mut coeffs = vec![def_val.clone(); ((l + 1) * (l + 1)) as usize];
+    let zero = T::zero();
+    let mut coeffs = vec![zero.clone(); ((l + 1) * (l + 1)) as usize];
 
     // calculate coefficient ci
     let ci_task = |ic: usize, coeff: &mut T| {
-        let mut acc = def_val.clone();
+        let mut acc = zero.clone();
         for sh_sample in sh_samples.iter().take(nsamples) {
             let coeff = sh_sample.coeff[ic];
             let val = f(sh_sample.xyz);
@@ -166,32 +166,44 @@ where
 }
 
 /// project  spherical function f to sh basis
-pub fn sh_project_one<T>(l: i32, nsamples: usize, val: T) -> T
+pub fn sh_project_one<T>(val: T, l: i32, dir: Vec3f) -> T
 where
-    T: Mul<f32, Output = T> + NumOps + Send + Sync + Clone,
-{
-    todo!()
-}
-
-/// reconstruc values from direction generating function f
-pub fn sh_reconstruct_fn<F, T>(coeffs: &[f32], l: i32, f: F) -> Vec<T>
-where
-    T: Add<f32, Output = T> + NumOps + Default + Send + Sync + Clone,
-    F: Fn() -> Option<Vec3f> + Sync,
-{
-    todo!()
-}
-
-/// reconstruc one value
-pub fn sh_reconstruct_one<T>(coeffs: &[T], l: i32, dir: Vec3f) -> T
-where
-    T: Add<T, Output = T> + Mul<f32, Output = T> + Default + Send + Sync + Clone,
+    T: Mul<f32, Output = T> + NumOps + Zero + Clone,
 {
     let sph = xyz2spherical(dir);
     let theta = sph[1];
     let phi = sph[2];
 
-    let mut res = T::default();
+    let mut res = T::zero();
+
+    for il in 0..l + 1 {
+        for im in -il..il + 1 {
+            let sh = sh_eval(il, im, theta, phi);
+            res = res + val.clone() * sh;
+        }
+    }
+
+    res
+}
+
+/// return a reconstructed spherical functon f
+pub fn sh_reconstruct_fn<T>(coeffs: &[T], l: i32) -> impl Fn(Vec3f) -> T
+where
+    T: Add<f32, Output = T> + Mul<f32, Output = T> + NumOps + Zero + Clone,
+{
+    move |dir: Vec3f| sh_reconstruct_one(coeffs, l, dir)
+}
+
+/// reconstruc one value
+pub fn sh_reconstruct_one<T>(coeffs: &[T], l: i32, dir: Vec3f) -> T
+where
+    T: Add<T, Output = T> + Mul<f32, Output = T> + Zero + Clone,
+{
+    let sph = xyz2spherical(dir);
+    let theta = sph[1];
+    let phi = sph[2];
+
+    let mut res = T::zero();
 
     for il in 0..l + 1 {
         for im in -il..il + 1 {

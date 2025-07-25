@@ -1,4 +1,4 @@
-use num_traits::Num;
+use num_traits::{Num, Zero};
 
 pub const MAX_DIM: usize = 4;
 
@@ -112,7 +112,8 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
             shape: TensorShape::onedim(N),
         }
     }
-
+    
+    /// row major matrix
     pub fn mat(arr: [T; N], shape: [usize; 2]) -> Self {
         Tensor {
             raw: arr,
@@ -165,11 +166,28 @@ where
     }
 }
 
+impl<T, const N: usize> Zero for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    fn zero() -> Self {
+        Self::default()
+    }
+
+    fn is_zero(&self) -> bool {
+        self.raw.iter().all(|x| x.is_zero())
+    }
+
+    fn set_zero(&mut self) {
+        self.raw.iter_mut().for_each(|x| *x = T::zero());
+    }
+}
+
 pub type Vec3f = Tensor<f32, 3>;
-pub type Vec3x3f = Tensor<f32, 9>;
+pub type Mat3x3f = Tensor<f32, 9>;
 
 pub type Vec4f = Tensor<f32, 4>;
-pub type Vec4x4f = Tensor<f32, 16>;
+pub type Mat4x4f = Tensor<f32, 16>;
 
 #[test]
 fn test_shape() {
