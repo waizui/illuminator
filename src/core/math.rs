@@ -32,6 +32,13 @@ where
     clamp(first - 1, 0, size.saturating_sub(2))
 }
 
+pub fn factorial(x: i32) -> f32 {
+    if x == 0 {
+        return 1f32;
+    }
+    (1..x + 1).fold(1., |acc, x| acc * x as f32)
+}
+
 #[test]
 fn test_split() {
     let arr = [2, 2, 3];

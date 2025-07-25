@@ -1,4 +1,7 @@
-use crate::{core::vec::Vector, prelude::Vec3f};
+use crate::{
+    core::{math::factorial, vec::Vector},
+    prelude::Vec3f,
+};
 use num_traits::{NumOps, Zero};
 use std::{
     f32::consts::PI,
@@ -13,13 +16,6 @@ pub fn xyz2spherical(xyz: Vec3f) -> Vec3f {
     let theta = u[1].acos();
     let phi = u[0].atan2(u[2]);
     Vec3f::vec([r, theta, phi])
-}
-
-pub fn factorial(x: i32) -> f32 {
-    if x == 0 {
-        return 1f32;
-    }
-    (1..x + 1).fold(1., |acc, x| acc * x as f32)
 }
 
 /// evaluate Associated Legendre Polynomial P(l,m) at x
