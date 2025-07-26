@@ -118,6 +118,16 @@ where
     }
 }
 
+impl<T, const N: usize> IndexMut<usize> for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        let real_i = self.shape.to_index(&[index]);
+        &mut self.raw[real_i]
+    }
+}
+
 impl<T, const N: usize> Index<(usize, usize)> for Tensor<T, N>
 where
     T: TensorNum,
@@ -150,6 +160,16 @@ where
     }
 }
 
+impl<T, const N: usize> IndexMut<(usize, usize, usize)> for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    fn index_mut(&mut self, index: (usize, usize, usize)) -> &mut Self::Output {
+        let real_i = self.shape.to_index(&[index.0, index.1, index.2]);
+        &mut self.raw[real_i]
+    }
+}
+
 impl<T, const N: usize> Index<(usize, usize, usize, usize)> for Tensor<T, N>
 where
     T: TensorNum,
@@ -158,6 +178,16 @@ where
     fn index(&self, index: (usize, usize, usize, usize)) -> &Self::Output {
         let real_i = self.shape.to_index(&[index.0, index.1, index.2, index.3]);
         &self.raw[real_i]
+    }
+}
+
+impl<T, const N: usize> IndexMut<(usize, usize, usize, usize)> for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    fn index_mut(&mut self, index: (usize, usize, usize, usize)) -> &mut Self::Output {
+        let real_i = self.shape.to_index(&[index.0, index.1, index.2, index.3]);
+        &mut self.raw[real_i]
     }
 }
 

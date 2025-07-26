@@ -80,7 +80,7 @@ impl Quaternion {
 
     /// rotate a vector or point
     pub fn transform_vec(&self, vec: Vec3f) -> Vec3f {
-        self.to_matrix().matmul(vec).reshaped(&[3])
+        self.to_matrix().matmulvec(vec)
     }
 
     pub fn conjugate(&self) -> Self {
