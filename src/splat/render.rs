@@ -1,5 +1,5 @@
 use crate::{
-    gsplat::{gaussian::Splat, io::read_ply},
+    splat::{gaussian::Gaussian, io::read_ply},
     prelude::BVH,
 };
 use anyhow::Result;
@@ -12,7 +12,7 @@ pub struct SplatsRenderer {
 impl SplatsRenderer {
     pub fn from_ply(path: &str) -> Result<Self> {
         let input_gs = read_ply(path)?;
-        let splats: Vec<Splat> = input_gs.par_iter().map(Splat::from_input).collect();
+        let splats: Vec<Gaussian> = input_gs.par_iter().map(Gaussian::from_input).collect();
 
         let mut bvh = BVH::new(splats.len());
 
@@ -24,13 +24,14 @@ impl SplatsRenderer {
 
         Ok(SplatsRenderer { bvh })
     }
+
 }
 
 #[test]
 fn test_splats_render() {
     use crate::img::*;
     use crate::{
-        gsplat::{gaussian::Splat, render::SplatsRenderer},
+        splat::{gaussian::Gaussian, render::SplatsRenderer},
         prelude::Vec3f,
         raycast::Ray,
     };
@@ -61,7 +62,7 @@ fn test_splats_render() {
 
             if let Some((_, i)) = gs.bvh.raycast_node(&ray) {
                 let prim = &gs.bvh.primitives[i];
-                let splat = prim.as_any().downcast_ref::<Splat>().unwrap();
+                let splat = prim.as_any().downcast_ref::<Gaussian>().unwrap();
                 let rgb = splat.sh_color(3, dir);
 
                 let r = (rgb[0] * 255.) as u8;

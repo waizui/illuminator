@@ -2,13 +2,13 @@ const SH_C0: f32 = 0.2820948;
 
 use crate::{
     core::{quaternion::Quat, spherical::sh_reconstruct_one},
-    gsplat::io::InputSplat,
+    splat::io::InputGaussian,
     prelude::Vec3f,
     raycast::{Hit, Ray, Raycast, bounds::Bounds3f, primitive::Primitive},
 };
 
 #[derive(Debug, Clone, Copy)]
-pub struct Splat {
+pub struct Gaussian {
     pub pos: Vec3f,
     pub nor: Vec3f,
     pub col: Vec3f,
@@ -18,8 +18,8 @@ pub struct Splat {
     pub rot: Quat,
 }
 
-impl Splat {
-    pub fn from_input(input: &InputSplat) -> Self {
+impl Gaussian {
+    pub fn from_input(input: &InputGaussian) -> Self {
         let col = Vec3f::vec(input.dc0) * SH_C0 + 0.5;
 
         let sh = std::array::from_fn(|i| {
@@ -27,7 +27,7 @@ impl Splat {
             Vec3f::vec(reodered_sh)
         });
 
-        Splat {
+        Gaussian {
             pos: Vec3f::vec(input.pos),
             nor: Vec3f::vec(input.nor),
             col,
@@ -52,14 +52,14 @@ impl Splat {
     }
 }
 
-impl Raycast for Splat {
+impl Raycast for Gaussian {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
         //TODO: icosahedron
         self.bounds().raycast(ray)
     }
 }
 
-impl Primitive for Splat {
+impl Primitive for Gaussian {
     fn bounds(&self) -> Bounds3f {
         let one = Vec3f::vec([0.01; 3]);
         Bounds3f {
