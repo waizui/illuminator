@@ -1,10 +1,10 @@
 const SH_C0: f32 = 0.2820948;
 
 use crate::{
-    core::{quaternion::Quat, spherical::sh_reconstruct_one},
-    splat::io::InputGaussian,
+    core::{math, quaternion::Quat, spherical::sh_reconstruct_one},
     prelude::Vec3f,
     raycast::{Hit, Ray, Raycast, bounds::Bounds3f, primitive::Primitive},
+    splat::io::InputGaussian,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -32,7 +32,7 @@ impl Gaussian {
             nor: Vec3f::vec(input.nor),
             col,
             sh,
-            opacity: input.opacity,
+            opacity: math::sigmoid(input.opacity),
             scale: Vec3f::vec(input.scale),
             rot: Quat::new(input.rot),
         }

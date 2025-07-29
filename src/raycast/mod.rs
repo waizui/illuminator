@@ -3,9 +3,9 @@ use crate::core::tensor::Vec3f;
 pub mod bounds;
 pub mod bvh;
 pub mod bvhbuild;
+pub mod camera;
 pub mod morton;
 pub mod primitive;
-pub mod camera;
 pub mod sphere;
 
 #[derive(Debug, Clone)]
@@ -26,6 +26,11 @@ impl Ray {
 
     pub fn segment(org: Vec3f, dir: Vec3f, t_max: f32) -> Ray {
         Ray { org, dir, t_max }
+    }
+    
+    /// move ray alone direction by scaling factor t
+    pub fn marching(&mut self, t: f32) {
+        self.org = self.org + self.dir * t;
     }
 }
 

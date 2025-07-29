@@ -39,6 +39,10 @@ pub fn factorial(x: i32) -> f32 {
     (1..x + 1).fold(1., |acc, x| acc * x as f32)
 }
 
+pub fn sigmoid(x: f32) -> f32 {
+    1. / (1. + (-x).exp())
+}
+
 #[test]
 fn test_split() {
     let arr = [2, 2, 3];
