@@ -12,6 +12,8 @@ pub struct SplatsRenderer {
 }
 
 impl SplatsRenderer {
+    pub const CHUNK_SIZE: usize = 64;
+    pub const BVH_NODE_SIZE: usize = 64;
     pub fn from_ply(path: &str) -> Result<Self> {
         let input_gs = read_ply(path)?;
         let splats: Vec<Gaussian> = input_gs.par_iter().map(Gaussian::from_input).collect();
@@ -22,59 +24,49 @@ impl SplatsRenderer {
             bvh.push(splats[i]);
         });
 
-        bvh.build(65, true);
+        bvh.build(Self::BVH_NODE_SIZE + 1, true);
 
         Ok(SplatsRenderer { bvh })
     }
 
     pub fn trace(&self, ray: &Ray) -> Vec3f {
-        const CHUNK_SIZE: usize = 32;
         let mut ray = ray.clone();
         let mut col = Vec3f::zero();
         let mut tsm = 1.; // transmittance
 
+        let mut hit_count = 0;
+        let mut w = 1.; //weight
+        let mut buf = [(0, 0.); Self::CHUNK_SIZE];
+
         loop {
-            let mut hit_count = 0;
-            let mut w = 1.;
-            let mut buf = [(0, 0.); CHUNK_SIZE];
+            let mut max_t = 0f32;
+            self.bvh.mult_raycast(&ray, |_r, hit, i| {
+                buf[hit_count] = (i, hit.t);
+                hit_count += 1;
+                max_t = max_t.max(hit.t);
+                hit_count == Self::CHUNK_SIZE
+            });
 
-            loop {
-                let mut max_t = 0f32;
-                self.bvh.mult_raycast(&ray, |_r, hit, i| {
-                    buf[hit_count] = (i, hit.t);
-                    hit_count += 1;
-                    max_t = max_t.max(hit.t);
-                    hit_count == CHUNK_SIZE
-                });
+            buf[0..hit_count].sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
-                buf[0..hit_count].sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-
-                for i in 0..hit_count {
-                    let splat = self.get_gaussian(buf[i].0);
-                    let rgb = splat.col;
-                    w = tsm * (1. - splat.opacity);
-                    if w < 1e-4f32 {
-                        break;
-                    }
-                    col = col + rgb * (w * splat.opacity);
-                }
-
-                if w < 1e-4f32 {
+            for i in 0..hit_count {
+                let splat = self.get_gaussian(buf[i].0);
+                let rgb = splat.sh_color(2, ray.dir);
+                w = tsm * (1. - splat.opacity);
+                if w < 1e-5f32 {
                     break;
                 }
-
-                if hit_count < CHUNK_SIZE {
-                    break;
-                }
-                //re-init tracing
-                hit_count = 0;
                 tsm = w;
-                ray.marching(max_t + 1e-5f32);
+                col = col + rgb * (w * splat.opacity);
             }
 
-            if w < 1e-4f32 || hit_count < CHUNK_SIZE {
+            if w < 1e-4f32 || hit_count < Self::CHUNK_SIZE {
                 break;
             }
+
+            //re-init tracing
+            hit_count = 0;
+            ray.marching(max_t + 1e-5f32);
         }
         col
     }
