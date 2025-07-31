@@ -61,7 +61,7 @@ impl Raycast for Gaussian {
 
 impl Primitive for Gaussian {
     fn bounds(&self) -> Bounds3f {
-        let one = Vec3f::vec([0.01; 3]);
+        let one = Vec3f::vec([0.02; 3]);
         Bounds3f {
             min: self.pos - one,
             max: self.pos + one,

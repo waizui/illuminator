@@ -94,6 +94,59 @@ impl BVH {
 
         hit
     }
+
+    pub fn mult_raycast<F>(&self, ray: &Ray, mut anyhit: F)
+    where
+        F: FnMut(&Ray, Hit, usize) -> bool,
+    {
+        let mut cur_node_i = 0;
+        let mut to_visit_i = 0;
+        let mut nodes_to_visit = [0; 64];
+
+        let ray = &mut ray.clone();
+
+        loop {
+            let node = &self.nodes[cur_node_i];
+            if node.bounds.raycast(ray).is_some() {
+                if node.is_leaf() {
+                    // cast ray with primitives
+                    for i in 0..node.nprimitives {
+                        if let Some(hit_p) = self.primitives[node.offset + i].raycast(ray) {
+                            if anyhit(ray, hit_p, node.offset + i) {
+                                // terminate signal
+                                return;
+                            }
+                        }
+                    }
+                    if to_visit_i == 0 {
+                        break;
+                    }
+
+                    cur_node_i = nodes_to_visit[to_visit_i - 1];
+                    to_visit_i -= 1;
+                } else {
+                    // not leaf, put far BVH node on nodes_to_visit stack, advance to near node
+                    if ray.dir[node.axis] < 0. {
+                        // far node is left
+                        nodes_to_visit[to_visit_i] = cur_node_i + 1;
+                        cur_node_i = node.offset;
+                    } else {
+                        // far node is right
+                        nodes_to_visit[to_visit_i] = node.offset;
+                        cur_node_i += 1;
+                    }
+                    to_visit_i += 1;
+                }
+            } else {
+                // not hit
+                if to_visit_i == 0 {
+                    break;
+                }
+                cur_node_i = nodes_to_visit[to_visit_i - 1];
+                to_visit_i -= 1;
+            }
+        }
+    }
 }
 
 impl Raycast for BVH {
@@ -224,6 +277,19 @@ fn test_bvh_cast() {
         bvh.primitives.len(),
         sw.elapsed().as_millis()
     );
+
+    let diag_ray = Ray::new(Vec3f::vec([0.; 3]), Vec3f::vec([1.; 3]));
+
+    let mut hits = 0;
+    bvh.mult_raycast(&diag_ray, |_r, _hit, _i| {
+        hits += 1;
+        if hits == 3 {
+            return true;
+        }
+        false
+    });
+
+    assert_eq!(hits, 3);
 }
 
 #[test]

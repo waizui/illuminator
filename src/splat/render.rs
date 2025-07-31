@@ -31,33 +31,48 @@ impl SplatsRenderer {
         const CHUNK_SIZE: usize = 32;
         let mut ray = ray.clone();
         let mut col = Vec3f::zero();
-        let mut tsm = 1.;
+        let mut tsm = 1.; // transmittance
 
         loop {
             let mut hit_count = 0;
-            while let Some((hit, i)) = self.bvh.raycast_node(&ray) {
-                hit_count += 1;
+            let mut w = 1.;
+            let mut buf = [(0, 0.); CHUNK_SIZE];
 
-                let splat = self.get_gaussian(i);
-                let rgb = splat.sh_color(3, ray.dir);
+            loop {
+                let mut max_t = 0f32;
+                self.bvh.mult_raycast(&ray, |_r, hit, i| {
+                    buf[hit_count] = (i, hit.t);
+                    hit_count += 1;
+                    max_t = max_t.max(hit.t);
+                    hit_count == CHUNK_SIZE
+                });
 
-                let w = tsm * (1. - splat.opacity);
+                buf[0..hit_count].sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
-                col = col + rgb * (tsm * splat.opacity);
+                for i in 0..hit_count {
+                    let splat = self.get_gaussian(buf[i].0);
+                    let rgb = splat.col;
+                    w = tsm * (1. - splat.opacity);
+                    if w < 1e-4f32 {
+                        break;
+                    }
+                    col = col + rgb * (w * splat.opacity);
+                }
 
                 if w < 1e-4f32 {
                     break;
                 }
 
-                tsm = w;
-
-                if hit_count == CHUNK_SIZE {
+                if hit_count < CHUNK_SIZE {
                     break;
                 }
-                ray.marching(hit.t + f32::EPSILON);
+                //re-init tracing
+                hit_count = 0;
+                tsm = w;
+                ray.marching(max_t + 1e-5f32);
             }
 
-            if hit_count < CHUNK_SIZE {
+            if w < 1e-4f32 || hit_count < CHUNK_SIZE {
                 break;
             }
         }
@@ -66,8 +81,7 @@ impl SplatsRenderer {
 
     pub fn get_gaussian(&self, i: usize) -> &Gaussian {
         let prim = &self.bvh.primitives[i];
-        let splat = prim.as_any().downcast_ref::<Gaussian>().unwrap();
-        splat
+        prim.as_any().downcast_ref::<Gaussian>().unwrap()
     }
 }
 
@@ -78,10 +92,13 @@ fn test_trace_splats() {
     use image::{Rgb, RgbImage};
     use rayon::prelude::*;
 
-    let path = "./target/obj_011.ply";
+    let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
-    let (w, h) = (1024, 1024);
+    let (w, h) = (32, 32);
+    // let (w, h) = (512, 512);
+
+    println!("test tace {w}x{h}");
 
     let mut img: Image<Rgb<u8>> = Image::new(w, h);
 
@@ -91,7 +108,7 @@ fn test_trace_splats() {
         .enumerate()
         .for_each(|(i, pix)| {
             let (iw, ih) = (i % w, i / w);
-            let (lw, ly) = (3., 3.);
+            let (lw, ly) = (20., 20.);
             let (x, y) = (
                 iw as f32 * lw / (w - 1) as f32,
                 (h - ih) as f32 * ly / (h - 1) as f32,
@@ -100,9 +117,8 @@ fn test_trace_splats() {
             let org = Vec3f::vec([1025., x - lw / 2., y - ly / 2.]);
             let dir = Vec3f::vec([-1., 0., 0.]);
             let ray = Ray::new(org, dir);
-
             let col = gs.trace(&ray);
-            let col = col * 300.;
+            let col = col * 255.;
             *pix = Rgb([col[0] as u8, col[1] as u8, col[2] as u8]);
         });
 
@@ -123,11 +139,11 @@ fn test_splats_render() {
     use image::{Rgb, RgbImage};
     use rayon::prelude::*;
 
-    let path = "./target/obj_011.ply";
+    let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
     let (w, h) = (32, 32);
-    // let (w, h) = (1024, 1024);
+    // let (w, h) = (256, 256);
     let mut img: Image<Rgb<u8>> = Image::new(w, h);
 
     img.data_mut()

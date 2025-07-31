@@ -176,9 +176,19 @@ impl BVH {
         let mut total_nodes = total_nodes.lock().unwrap();
         *total_nodes += sah_created_nodes;
 
-        // swap ordered primitives and original primitives
-        self.primitives = Arc::try_unwrap(ordered_prims).unwrap();
 
+        // swap ordered primitives and original primitives
+        let ordered_prims = match Arc::try_unwrap(ordered_prims) {
+            Ok(p_vec) => p_vec,
+            Err(arc_p_vec) => {
+                panic!(
+                    "ordered_prims is still shared (count: {}).",
+                    Arc::strong_count(&arc_p_vec)
+                );
+            }
+        };
+
+        let _ = std::mem::replace(&mut self.primitives, ordered_prims);
         self.nodes.resize_with(*total_nodes, LinearBVHNode::default);
         let mut offset = Box::new(0);
         self.flatten_bvh(&root, &mut offset);
