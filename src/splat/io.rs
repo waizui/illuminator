@@ -13,7 +13,7 @@ use ply_rs::{
 // continuous bytes gaussian splat
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct InputGaussian {
+pub struct RawGaussian {
     pub pos: [f32; 3],
     pub nor: [f32; 3],
     pub dc0: [f32; 3],
@@ -23,9 +23,9 @@ pub struct InputGaussian {
     pub rot: [f32; 4],
 }
 
-impl Default for InputGaussian {
+impl Default for RawGaussian {
     fn default() -> Self {
-        InputGaussian {
+        RawGaussian {
             pos: [0.; 3],
             nor: [0.; 3],
             dc0: [0.; 3],
@@ -37,7 +37,7 @@ impl Default for InputGaussian {
     }
 }
 
-pub fn read_ply(path: &str) -> Result<Vec<InputGaussian>> {
+pub fn read_ply(path: &str) -> Result<Vec<RawGaussian>> {
     let f = File::open(path)?;
     let mut reader = BufReader::new(f);
 
@@ -48,7 +48,7 @@ pub fn read_ply(path: &str) -> Result<Vec<InputGaussian>> {
     let mut buf: Vec<u8> = vec![0; stride * splat_count];
     reader.read_exact(&mut buf)?;
 
-    let splats = vec![InputGaussian::default(); splat_count];
+    let splats = vec![RawGaussian::default(); splat_count];
 
     unsafe {
         let base_prt = splats.as_ptr();

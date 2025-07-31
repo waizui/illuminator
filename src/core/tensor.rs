@@ -107,36 +107,6 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
             shape: TensorShape::from(shape),
         }
     }
-
-    pub fn min(&self, other: Self) -> Self {
-        let raw: [T; N] = std::array::from_fn(|i| {
-            if self.raw[i] < other.raw[i] {
-                return self.raw[i];
-            }
-
-            other.raw[i]
-        });
-
-        Tensor {
-            raw,
-            shape: self.shape,
-        }
-    }
-
-    pub fn max(&self, other: Self) -> Self {
-        let raw: [T; N] = std::array::from_fn(|i| {
-            if self.raw[i] < other.raw[i] {
-                return other.raw[i];
-            }
-
-            self.raw[i]
-        });
-
-        Tensor {
-            raw,
-            shape: self.shape,
-        }
-    }
 }
 
 impl<T, const N: usize> Default for Tensor<T, N>

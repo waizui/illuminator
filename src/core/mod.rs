@@ -8,3 +8,4 @@ pub mod sampling;
 pub mod spherical;
 pub mod tensor;
 pub mod vec;
+pub mod tsrmath;

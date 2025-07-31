@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    core::{math::gamma, tensor::Vec3f},
+    core::{math::gamma, tensor::Vec3f, tsrmath::TensorMath},
     raycast::*,
 };
 

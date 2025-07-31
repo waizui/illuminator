@@ -84,11 +84,11 @@ fn test_trace_splats() {
     use image::{Rgb, RgbImage};
     use rayon::prelude::*;
 
-    let path = "./target/background.ply";
+    let path = "./target/obj_011.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
-    let (w, h) = (32, 32);
-    // let (w, h) = (512, 512);
+    // let (w, h) = (32, 32);
+    let (w, h) = (1024, 1024);
 
     println!("test tace {w}x{h}");
 
@@ -100,7 +100,7 @@ fn test_trace_splats() {
         .enumerate()
         .for_each(|(i, pix)| {
             let (iw, ih) = (i % w, i / w);
-            let (lw, ly) = (20., 20.);
+            let (lw, ly) = (3., 3.);
             let (x, y) = (
                 iw as f32 * lw / (w - 1) as f32,
                 (h - ih) as f32 * ly / (h - 1) as f32,
