@@ -1,4 +1,4 @@
-use num_traits::{Num, Zero};
+use num_traits::{Num, One, Zero};
 
 pub const MAX_DIM: usize = 4;
 
@@ -96,9 +96,10 @@ impl<T: TensorNum, const N: usize> Tensor<T, N> {
         Self::new(&shape, arr)
     }
 
-    pub fn reshape(&mut self, shape: &[usize]) {
+    pub fn reshape(&mut self, shape: &[usize]) -> Self {
         //TODO:check shape
         self.shape = TensorShape::from(shape);
+        *self
     }
 
     pub fn reshaped(&self, shape: &[usize]) -> Self {
@@ -136,11 +137,25 @@ where
     }
 }
 
+impl<T, const N: usize> One for Tensor<T, N>
+where
+    T: TensorNum,
+{
+    fn one() -> Self {
+        let t = T::one();
+        Self::vec([t; N])
+    }
+}
+
 pub type Vec3f = Tensor<f32, 3>;
 pub type Mat3x3f = Tensor<f32, 9>;
+pub type Mat1x3f = Tensor<f32, 3>;
+pub type Mat3x1f = Tensor<f32, 3>;
 
 pub type Vec4f = Tensor<f32, 4>;
 pub type Mat4x4f = Tensor<f32, 16>;
+pub type Mat1x4f = Tensor<f32, 4>;
+pub type Mat4x1f = Tensor<f32, 4>;
 
 #[test]
 fn test_shape() {

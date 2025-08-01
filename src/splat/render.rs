@@ -1,10 +1,11 @@
 use crate::{
+    core::{matrix::Matrix, tensor::Mat1x3f, vec::Vector},
     prelude::{BVH, Vec3f},
     raycast::Ray,
     splat::{gaussian::Gaussian, io::read_ply},
 };
 use anyhow::Result;
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use rayon::prelude::*;
 
 pub struct SplatsRenderer {
@@ -30,6 +31,9 @@ impl SplatsRenderer {
     }
 
     pub fn trace(&self, ray: &Ray) -> Vec3f {
+        const T_MIN: f32 = 1e-5;
+        const RAY_STEP: f32 = 1e-5;
+
         let mut ray = ray.clone();
         let mut col = Vec3f::zero();
         let mut tsm = 1.; // transmittance
@@ -53,22 +57,40 @@ impl SplatsRenderer {
                 let splat = self.get_gaussian(buf[i].0);
                 let rgb = splat.sh_color(2, ray.dir);
                 w = tsm * (1. - splat.opacity);
-                if w < 1e-5f32 {
+                if w < T_MIN {
                     break;
                 }
                 tsm = w;
                 col = col + rgb * (w * splat.opacity);
             }
 
-            if w < 1e-4f32 || hit_count < Self::CHUNK_SIZE {
+            if w < T_MIN || hit_count < Self::CHUNK_SIZE {
                 break;
             }
 
             //re-init tracing
             hit_count = 0;
-            ray.marching(max_t + 1e-5f32);
+            ray.marching(max_t + RAY_STEP);
         }
         col
+    }
+
+    fn process_hit(&self, splat: &Gaussian, ray: &Ray) -> f32 {
+        let rot = splat.rot.to_matrix();
+        let inv_scl = (Vec3f::one() / splat.scale).reshape(&[3, 1]);
+
+        // S^-1[T^-1 P]R = p1
+        let trans_pos: Mat1x3f = (ray.org - splat.pos).reshape(&[1, 3]).matmul(rot);
+        let ray_pos_obj: Vec3f = inv_scl.matmul(trans_pos).reshape(&[3]);
+
+        // S^-1[D]R = D1
+        let rot_dir: Mat1x3f = ray.dir.reshaped(&[1, 3]).matmul(rot);
+        let ray_dir_obj: Vec3f = inv_scl.matmul(rot_dir).reshape(&[3]).normalize();
+
+        let cp = ray_pos_obj.cross(ray_dir_obj);
+        let graydist = cp.dot(cp);
+
+        (-0.5 * graydist).exp()
     }
 
     pub fn get_gaussian(&self, i: usize) -> &Gaussian {
@@ -83,12 +105,13 @@ fn test_trace_splats() {
     use crate::{prelude::Vec3f, raycast::Ray, splat::render::SplatsRenderer};
     use image::{Rgb, RgbImage};
     use rayon::prelude::*;
+    use std::path::Path;
 
     let path = "./target/obj_011.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
     // let (w, h) = (32, 32);
-    let (w, h) = (1024, 1024);
+    let (w, h) = (512, 512);
 
     println!("test tace {w}x{h}");
 
@@ -114,9 +137,10 @@ fn test_trace_splats() {
             *pix = Rgb([col[0] as u8, col[1] as u8, col[2] as u8]);
         });
 
+    let fname = Path::new(path).file_stem().unwrap().to_str().unwrap();
     let rgbimg = RgbImage::from(img);
     rgbimg
-        .save("./target/trace_gs_example.png")
+        .save(format!("./target/{fname}_trace.png"))
         .expect("Failed to save BVH example image");
 }
 

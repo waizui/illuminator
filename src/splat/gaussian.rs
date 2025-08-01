@@ -67,10 +67,10 @@ impl Raycast for Gaussian {
 }
 
 fn calc_bounds(pos: Vec3f, scl: Vec3f, rot: Quat) -> Bounds3f {
-    calc_bound_aabb(pos, scl, rot)
+    calc_bounds_aabb(pos, scl, rot)
 }
 
-fn calc_bound_aabb(pos: Vec3f, scl: Vec3f, quat: Quat) -> Bounds3f {
+fn calc_bounds_aabb(pos: Vec3f, scl: Vec3f, quat: Quat) -> Bounds3f {
     let aabb_vrt = [
         Vec3f::vec([-1., -1., -1.]),
         Vec3f::vec([-1., -1., 1.]),
