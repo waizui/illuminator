@@ -33,13 +33,14 @@ impl SplatsRenderer {
     pub fn trace(&self, ray: &Ray) -> Vec3f {
         const T_MIN: f32 = 1e-5;
         const RAY_STEP: f32 = 1e-5;
+        const ALPHA_MIN: f32 = 1e-5;
 
         let mut ray = ray.clone();
         let mut col = Vec3f::zero();
         let mut tsm = 1.; // transmittance
 
         let mut hit_count = 0;
-        let mut w = 1.; //weight
+        let mut t_cur = 1.; //weight
         let mut buf = [(0, 0.); Self::CHUNK_SIZE];
 
         loop {
@@ -55,16 +56,21 @@ impl SplatsRenderer {
 
             for i in 0..hit_count {
                 let splat = self.get_gaussian(buf[i].0);
+                let alpha = (self.process_hit(splat, &ray) * splat.opacity).min(0.99);
+                if alpha < ALPHA_MIN {
+                    continue;
+                }
+
                 let rgb = splat.sh_color(2, ray.dir);
-                w = tsm * (1. - splat.opacity);
-                if w < T_MIN {
+                t_cur = tsm * (1. - alpha);
+                if t_cur < T_MIN {
                     break;
                 }
-                tsm = w;
-                col = col + rgb * (w * splat.opacity);
+                tsm = t_cur;
+                col = col + rgb * (t_cur * alpha);
             }
 
-            if w < T_MIN || hit_count < Self::CHUNK_SIZE {
+            if t_cur < T_MIN || hit_count < Self::CHUNK_SIZE {
                 break;
             }
 
@@ -77,15 +83,15 @@ impl SplatsRenderer {
 
     fn process_hit(&self, splat: &Gaussian, ray: &Ray) -> f32 {
         let rot = splat.rot.to_matrix();
-        let inv_scl = (Vec3f::one() / splat.scale).reshape(&[3, 1]);
+        let inv_scl = (Vec3f::one() / splat.scale).reshape(&[1, 3]);
 
         // S^-1[T^-1 P]R = p1
         let trans_pos: Mat1x3f = (ray.org - splat.pos).reshape(&[1, 3]).matmul(rot);
-        let ray_pos_obj: Vec3f = inv_scl.matmul(trans_pos).reshape(&[3]);
+        let ray_pos_obj: Vec3f = (inv_scl * trans_pos).reshape(&[3]);
 
         // S^-1[D]R = D1
         let rot_dir: Mat1x3f = ray.dir.reshaped(&[1, 3]).matmul(rot);
-        let ray_dir_obj: Vec3f = inv_scl.matmul(rot_dir).reshape(&[3]).normalize();
+        let ray_dir_obj: Vec3f = (inv_scl * rot_dir).reshape(&[3]).normalize();
 
         let cp = ray_pos_obj.cross(ray_dir_obj);
         let graydist = cp.dot(cp);
@@ -107,10 +113,12 @@ fn test_trace_splats() {
     use rayon::prelude::*;
     use std::path::Path;
 
-    let path = "./target/obj_011.ply";
+    // let path = "./target/obj_011.ply";
+    let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
     // let (w, h) = (32, 32);
+    // let (w, h) = (128, 128);
     let (w, h) = (512, 512);
 
     println!("test tace {w}x{h}");
@@ -123,7 +131,8 @@ fn test_trace_splats() {
         .enumerate()
         .for_each(|(i, pix)| {
             let (iw, ih) = (i % w, i / w);
-            let (lw, ly) = (3., 3.);
+            // let (lw, ly) = (3., 3.);
+            let (lw, ly) = (20., 20.);
             let (x, y) = (
                 iw as f32 * lw / (w - 1) as f32,
                 (h - ih) as f32 * ly / (h - 1) as f32,
