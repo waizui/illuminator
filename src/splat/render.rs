@@ -33,7 +33,7 @@ impl SplatsRenderer {
     pub fn trace(&self, ray: &Ray) -> Vec3f {
         const T_MIN: f32 = 1e-5;
         const RAY_STEP: f32 = 1e-5;
-        const ALPHA_MIN: f32 = 1e-5;
+        const ALPHA_MIN: f32 = 4e-2;
 
         let mut ray = ray.clone();
         let mut col = Vec3f::zero();
@@ -87,13 +87,13 @@ impl SplatsRenderer {
 
         // S^-1[T^-1 P]R = p1
         let trans_pos: Mat1x3f = (ray.org - splat.pos).reshape(&[1, 3]).matmul(rot);
-        let ray_pos_obj: Vec3f = (inv_scl * trans_pos).reshape(&[3]);
+        let ray_pos: Vec3f = (inv_scl * trans_pos).reshape(&[3]);
 
         // S^-1[D]R = D1
         let rot_dir: Mat1x3f = ray.dir.reshaped(&[1, 3]).matmul(rot);
-        let ray_dir_obj: Vec3f = (inv_scl * rot_dir).reshape(&[3]).normalize();
+        let ray_dir: Vec3f = (inv_scl * rot_dir).reshape(&[3]).normalize();
 
-        let cp = ray_pos_obj.cross(ray_dir_obj);
+        let cp = ray_pos.cross(ray_dir);
         let graydist = cp.dot(cp);
 
         (-0.5 * graydist).exp()
@@ -113,8 +113,9 @@ fn test_trace_splats() {
     use rayon::prelude::*;
     use std::path::Path;
 
+    let path = "./target/input.ply";
     // let path = "./target/obj_011.ply";
-    let path = "./target/background.ply";
+    // let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
     // let (w, h) = (32, 32);
@@ -131,8 +132,8 @@ fn test_trace_splats() {
         .enumerate()
         .for_each(|(i, pix)| {
             let (iw, ih) = (i % w, i / w);
-            // let (lw, ly) = (3., 3.);
-            let (lw, ly) = (20., 20.);
+            let (lw, ly) = (3., 3.);
+            // let (lw, ly) = (20., 20.);
             let (x, y) = (
                 iw as f32 * lw / (w - 1) as f32,
                 (h - ih) as f32 * ly / (h - 1) as f32,

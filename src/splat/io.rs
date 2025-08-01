@@ -111,7 +111,10 @@ pub fn type_size(prop: &PropertyType) -> Result<usize> {
     match prop {
         ply::PropertyType::Scalar(ply::ScalarType::Float) => Ok(4),
         // ply::PropertyType::Scalar(ply::ScalarType::Double) => Some(8),
-        _ => Err(anyhow!("err: unknow datatype")),
+        _ => {
+            dbg!(prop);
+            Err(anyhow!("err: unknow datatype"))
+        }
     }
 }
 
