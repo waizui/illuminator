@@ -15,6 +15,7 @@ pub struct SplatsRenderer {
 impl SplatsRenderer {
     pub const CHUNK_SIZE: usize = 64;
     pub const BVH_NODE_SIZE: usize = 64;
+
     pub fn from_ply(path: &str) -> Result<Self> {
         let input_gs = read_ply(path)?;
         let splats: Vec<Gaussian> = input_gs.par_iter().map(Gaussian::from_input).collect();
@@ -32,53 +33,68 @@ impl SplatsRenderer {
 
     pub fn trace(&self, ray: &Ray) -> Vec3f {
         const T_MIN: f32 = 1e-5;
-        const RAY_STEP: f32 = 1e-5;
         const ALPHA_MIN: f32 = 4e-2;
 
-        let mut ray = ray.clone();
         let mut col = Vec3f::zero();
         let mut tsm = 1.; // transmittance
 
         let mut hit_count = 0;
-        let mut t_cur = 1.; //weight
         let mut buf = [(0, 0.); Self::CHUNK_SIZE];
 
-        loop {
-            let mut max_t = 0f32;
-            self.bvh.mult_raycast(&ray, |_r, hit, i| {
-                buf[hit_count] = (i, hit.t);
-                hit_count += 1;
-                max_t = max_t.max(hit.t);
-                hit_count == Self::CHUNK_SIZE
-            });
+        self.bvh.mult_raycast(ray, |_, hit, i| {
+            buf[hit_count] = (i, hit.t);
+            hit_count += 1;
+            if hit_count == Self::CHUNK_SIZE {
+                let (chunk_col, chunk_tsm) = self.chunk_color(&mut buf, ray, tsm, T_MIN, ALPHA_MIN);
+                col = col + chunk_col;
+                tsm = chunk_tsm;
 
-            buf[0..hit_count].sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+                // restore chunk state
+                hit_count = 0;
 
-            for i in 0..hit_count {
-                let splat = self.get_gaussian(buf[i].0);
-                let alpha = (self.process_hit(splat, &ray) * splat.opacity).min(0.99);
-                if alpha < ALPHA_MIN {
-                    continue;
+                if tsm < T_MIN {
+                    return true;
                 }
+            }
+            // continue tracing
+            false
+        });
 
-                let rgb = splat.sh_color(2, ray.dir);
-                t_cur = tsm * (1. - alpha);
-                if t_cur < T_MIN {
-                    break;
-                }
-                tsm = t_cur;
-                col = col + rgb * (t_cur * alpha);
+        if hit_count < Self::CHUNK_SIZE {
+            let (chunk_col, _) = self.chunk_color(&mut buf, ray, tsm, T_MIN, ALPHA_MIN);
+            col = col + chunk_col;
+        }
+
+        col
+    }
+
+    fn chunk_color(
+        &self,
+        buf: &mut [(usize, f32)],
+        ray: &Ray,
+        mut tsm: f32,
+        t_min: f32,
+        a_min: f32,
+    ) -> (Vec3f, f32) {
+        buf.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+        let mut col = Vec3f::zero();
+        for &(i, _) in buf.iter() {
+            let splat = self.get_gaussian(i);
+            let alpha = (self.process_hit(splat, ray) * splat.opacity).min(0.99);
+            if alpha < a_min {
+                continue;
             }
 
-            if t_cur < T_MIN || hit_count < Self::CHUNK_SIZE {
+            let rgb = splat.sh_color(2, ray.dir);
+            tsm *= 1. - alpha;
+            if tsm < t_min {
                 break;
             }
-
-            //re-init tracing
-            hit_count = 0;
-            ray.marching(max_t + RAY_STEP);
+            col = col + rgb * (tsm * alpha);
         }
-        col
+
+        (col, tsm)
     }
 
     fn process_hit(&self, splat: &Gaussian, ray: &Ray) -> f32 {
@@ -113,14 +129,14 @@ fn test_trace_splats() {
     use rayon::prelude::*;
     use std::path::Path;
 
-    let path = "./target/bicycle.ply";
+    // let path = "./target/bicycle.ply";
     // let path = "./target/obj_011.ply";
-    // let path = "./target/background.ply";
+    let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
-    // let (w, h) = (32, 32);
+    let (w, h) = (32, 32);
     // let (w, h) = (128, 128);
-    let (w, h) = (512, 512);
+    // let (w, h) = (512, 512);
 
     println!("test tace {w}x{h}");
 
