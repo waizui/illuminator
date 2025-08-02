@@ -49,12 +49,12 @@ impl SplatsRenderer {
                 col = col + chunk_col;
                 tsm = chunk_tsm;
 
-                // restore chunk state
-                hit_count = 0;
-
                 if tsm < T_MIN {
                     return true;
                 }
+
+                // restore chunk state
+                hit_count = 0;
             }
             // continue tracing
             false
@@ -129,9 +129,9 @@ fn test_trace_splats() {
     use rayon::prelude::*;
     use std::path::Path;
 
-    // let path = "./target/bicycle.ply";
+    let path = "./target/bicycle.ply";
     // let path = "./target/obj_011.ply";
-    let path = "./target/background.ply";
+    // let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
     let (w, h) = (32, 32);
@@ -144,7 +144,6 @@ fn test_trace_splats() {
 
     img.data_mut()
         .par_iter_mut()
-        .with_min_len(w)
         .enumerate()
         .for_each(|(i, pix)| {
             let (iw, ih) = (i % w, i / w);
