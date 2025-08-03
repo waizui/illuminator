@@ -1,6 +1,6 @@
 use crate::raycast::{bounds::Bounds3f, primitive::Primitive, *};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct LinearBVHNode {
     pub bounds: Bounds3f,
     pub axis: usize,
@@ -15,23 +15,23 @@ impl LinearBVHNode {
     }
 }
 
-pub struct BVH {
+pub struct BVH<T: Primitive> {
     pub node_prims_limit: usize, // max primitives a node can include
-    pub primitives: Vec<Box<dyn Primitive>>,
+    pub primitives: Vec<T>,
     pub nodes: Vec<LinearBVHNode>,
 }
 
-impl BVH {
-    pub fn new(capacity: usize) -> BVH {
-        BVH {
+impl<T: Primitive> BVH<T> {
+    pub fn new(capacity: usize) -> Self {
+        Self {
             node_prims_limit: 65,
             primitives: Vec::with_capacity(capacity),
             nodes: Vec::new(),
         }
     }
 
-    pub fn push(&mut self, prim: impl Primitive + 'static) {
-        self.primitives.push(Box::new(prim));
+    pub fn push(&mut self, prim: T) {
+        self.primitives.push(prim);
     }
 
     pub fn bounds(&self) -> Bounds3f {
@@ -149,7 +149,7 @@ impl BVH {
     }
 }
 
-impl Raycast for BVH {
+impl<T: Primitive> Raycast for BVH<T> {
     fn raycast(&self, ray: &Ray) -> Option<Hit> {
         if let Some((hit, _)) = self.raycast_node(ray) {
             Some(hit)

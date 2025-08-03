@@ -9,7 +9,7 @@ use num_traits::{One, Zero};
 use rayon::prelude::*;
 
 pub struct SplatsRenderer {
-    pub bvh: BVH,
+    pub bvh: BVH<Gaussian>,
 }
 
 impl SplatsRenderer {
@@ -116,8 +116,7 @@ impl SplatsRenderer {
     }
 
     pub fn get_gaussian(&self, i: usize) -> &Gaussian {
-        let prim = &self.bvh.primitives[i];
-        prim.as_any().downcast_ref::<Gaussian>().unwrap()
+        &self.bvh.primitives[i]
     }
 }
 
@@ -134,8 +133,8 @@ fn test_trace_splats() {
     // let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
-    let (w, h) = (32, 32);
-    // let (w, h) = (128, 128);
+    // let (w, h) = (1, 1);
+    let (w, h) = (128, 128);
     // let (w, h) = (512, 512);
 
     println!("test tace {w}x{h}");

@@ -66,14 +66,6 @@ impl Primitive for Sphere {
         let max = self.cnt + r;
         Bounds3f { min, max }
     }
-
-    fn clone_as_box(&self) -> Box<dyn Primitive> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 #[test]

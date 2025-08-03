@@ -100,12 +100,4 @@ impl Primitive for Gaussian {
     fn bounds(&self) -> Bounds3f {
         self.bounds
     }
-
-    fn clone_as_box(&self) -> Box<dyn Primitive> {
-        Box::new(*self)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }

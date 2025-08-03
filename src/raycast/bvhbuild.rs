@@ -69,7 +69,7 @@ struct Treelet {
 }
 
 // imple linear bvh build
-impl BVH {
+impl<T:Primitive> BVH<T> {
     pub fn build(&mut self, node_prims_limit: usize, par_build: bool) {
         self.node_prims_limit = node_prims_limit;
         // bounds of whole bvh
@@ -128,7 +128,7 @@ impl BVH {
             }
         };
 
-        let mut p: Vec<Box<dyn Primitive>> = Vec::with_capacity(self.primitives.len());
+        let mut p: Vec<T> = Vec::with_capacity(self.primitives.len());
         let ordered_prims = {
             unsafe {
                 p.set_len(self.primitives.len());
@@ -200,7 +200,7 @@ impl BVH {
         build_nodes: &mut [Arc<BVHBuildNode>],
         morton_prims: &[MortonPrim],
         nprimitives: usize,
-        ordered_prims: Arc<Vec<Box<dyn Primitive>>>,
+        ordered_prims: Arc<Vec<T>>,
         ordered_prims_offset: Arc<AtomicUsize>,
         bit_index: i32,
     ) -> (Arc<BVHBuildNode>, usize) {
@@ -210,15 +210,15 @@ impl BVH {
             let mut bounds = Bounds3f::zero();
 
             unsafe {
-                let vec_ptr = Arc::as_ptr(&ordered_prims) as *mut Vec<Box<dyn Primitive>>;
+                let vec_ptr = Arc::as_ptr(&ordered_prims) as *mut Vec<T>;
                 let buffer_ptr = (*vec_ptr).as_mut_ptr();
 
                 for (i, morton_prim) in morton_prims.iter().take(nprimitives).enumerate() {
                     let org_prim_index = morton_prim.prim_index;
-                    let prim_box_ptr = self.primitives[org_prim_index].clone_as_box();
-                    bounds = bounds.union(prim_box_ptr.bounds());
+                    let prim = self.primitives[org_prim_index].clone();
+                    bounds = bounds.union(prim.bounds());
                     let cur_prim_index = first_prim_offset + i;
-                    std::ptr::write(buffer_ptr.add(cur_prim_index), prim_box_ptr);
+                    std::ptr::write(buffer_ptr.add(cur_prim_index), prim);
                 }
 
                 let node_ptr = Arc::as_ptr(&node) as *mut BVHBuildNode;
