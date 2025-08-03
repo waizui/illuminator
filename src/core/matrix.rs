@@ -1,21 +1,24 @@
 use crate::core::tensor::{Tensor, TensorNum};
 
-pub trait Matrix<T, const N: usize, const NR: usize>
+pub trait Matrix<T, const N: usize>
 where
     T: TensorNum,
 {
-    fn matmul<const ON: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, ON>;
+    // NO:output N , NR:rhs N
+    fn matmul<const NO: usize, const NR: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, NO>;
     /// matmul for 1d vector
-    fn matmulvec<const ON: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, ON> {
-        self.matmul(rhs.reshaped(&[NR, 1])).reshaped(&[ON])
+    fn matmulvec<const NO: usize, const NR: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, NO> {
+        self.matmul(rhs.reshaped(&[NR, 1])).reshaped(&[NO])
     }
+
+    fn inverse(&self) -> Option<Tensor<T, N>>;
 }
 
-impl<T, const N: usize, const NR: usize> Matrix<T, N, NR> for Tensor<T, N>
+impl<T, const N: usize> Matrix<T, N> for Tensor<T, N>
 where
     T: TensorNum,
 {
-    fn matmul<const NO: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, NO> {
+    fn matmul<const NO: usize, const NR: usize>(&self, rhs: Tensor<T, NR>) -> Tensor<T, NO> {
         let size_l = self.shape.size();
         let size_r = rhs.shape.size();
         debug_assert_eq!(size_l, 2);
@@ -38,6 +41,10 @@ where
         }
 
         res
+    }
+
+    fn inverse(&self) -> Option<Tensor<T, N>> {
+        todo!()
     }
 }
 
