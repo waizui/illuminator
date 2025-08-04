@@ -49,7 +49,7 @@ pub fn sigmoid(x: f32) -> f32 {
 }
 
 /// think of v0 is forward, this returns [v0,up,right]
-pub fn orthgnalization(v0: Vec3f, v1: Vec3f) -> (Vec3f, Vec3f, Vec3f) {
+pub fn orthogonalization(v0: Vec3f, v1: Vec3f) -> (Vec3f, Vec3f, Vec3f) {
     let (v0, v1) = {
         let (v0n, v1n) = (v0.normalize(), v1.normalize());
         if v0n.abs() != v1n.abs() {

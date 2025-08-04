@@ -1,7 +1,7 @@
 use num_traits::Zero;
 
 use crate::{
-    core::{math::orthgnalization, quaternion::Quat},
+    core::{math::orthogonalization, quaternion::Quat},
     prelude::*,
 };
 
@@ -21,7 +21,7 @@ impl Camera {
     pub fn new(pos: Vec3f, forward: Vec3f, fov: f32, near: f32, far: f32) -> Self {
         // y up , right handed
         let up = Vec3f::vec([0., 1., 0.]);
-        let (forward, up, right) = orthgnalization(forward, up);
+        let (forward, up, right) = orthogonalization(forward, up);
 
         Camera {
             pos,
@@ -38,7 +38,7 @@ impl Camera {
     pub fn look_at(&mut self, target: Vec3f) {
         let up = Vec3f::vec([0., 1., 0.]);
         let dir = target - self.pos;
-        let (forward, up, right) = orthgnalization(dir, up);
+        let (forward, up, right) = orthogonalization(dir, up);
         self.forward = forward;
         self.up = up;
         self.right = right;
