@@ -135,9 +135,9 @@ fn test_trace_splats() {
     // let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
-    // let (w, h) = (2, 2);
+    let (w, h) = (32, 32);
     // let (w, h) = (128, 128);
-    let (w, h) = (512, 512);
+    // let (w, h) = (512, 512);
 
     println!("test tace {w}x{h}");
 
