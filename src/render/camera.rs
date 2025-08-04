@@ -5,6 +5,8 @@ use crate::{
     prelude::*,
 };
 
+//TODO: camera types
+
 pub struct Camera {
     pub pos: Vec3f,
     pub rot: Quat,

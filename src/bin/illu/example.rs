@@ -51,23 +51,22 @@ pub fn bvh_example(save_path: Option<&str>) {
 
 pub fn gaussian_splatting_example(ply_path: Option<&str>, (w, h): (usize, usize)) {
     use illuminator::{prelude::*, splat::render::SplatsRenderer};
-    use image::{Rgb, RgbImage};
-    use rayon::prelude::*;
+    use image::RgbImage;
     use std::path::Path;
     use std::time::Instant;
 
     println!("Running BVH example...");
 
     let read_path = &path_or_default(ply_path, "point_cloud.ply");
-    let gs = SplatsRenderer::from_ply(read_path);
-    if gs.is_err() {
+    let rdr = SplatsRenderer::from_ply(read_path);
+    if rdr.is_err() {
         println!("Read file at {read_path} Error.");
         return;
     }
 
-    let gs = gs.unwrap();
+    let rdr = rdr.unwrap();
 
-    let high_res = w > 256 || h > 256;
+    let high_res = w * h > 256 * 256;
     if high_res {
         print!("Resolution is larger than 256x256. This may take a while. Continue? (y/n): ");
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
@@ -82,46 +81,13 @@ pub fn gaussian_splatting_example(ply_path: Option<&str>, (w, h): (usize, usize)
 
     println!("Trace resolution: {w}x{h}");
 
-    let mut img: Image<Rgb<u8>> = Image::new(w, h);
     let cam_pos = Vec3f::vec([5., 0., 0.]);
     let forward = Vec3f::zero() - cam_pos;
     let cam = Camera::new(cam_pos, forward, 30., 0.25, 4.);
 
-    let total_pixels = w * h;
-    let progress_counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let progress_counter_clone = progress_counter.clone();
-
-    let progress_handle = std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            let current = progress_counter_clone.load(std::sync::atomic::Ordering::Relaxed);
-            if current >= total_pixels {
-                println!("\rProgress: ({total_pixels}/{total_pixels})");
-                break;
-            }
-
-            print!("\rProgress: ({current}/{total_pixels})");
-            std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        }
-    });
-
     let start = Instant::now();
 
-    img.data_mut()
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, pix)| {
-            let (iw, ih) = (i % w, i / w);
-            // let ray = cam.gen_ray_orthogonal((iw, ih), (0., 0.), (w, h), 1.5);
-            let ray = cam.gen_ray((iw, ih), (0., 0.), (w, h));
-            let col = gs.trace(&ray);
-            let col = col * 255.;
-            *pix = Rgb([col[0] as u8, col[1] as u8, col[2] as u8]);
-
-            progress_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        });
-
-    progress_handle.join().unwrap();
+    let img = rdr.render(&cam, (w, h));
 
     println!("Rendering used {:.2}s", start.elapsed().as_secs_f32());
 

@@ -1,10 +1,10 @@
 pub mod ops;
-pub mod rgbimage;
+pub mod rgb;
 
 pub use crate::img::ops::ImgOp;
 
 pub trait PixelType: Copy + Send + Sync {
-    fn from(c: &[u8; 3]) -> Self;
+    fn from(c: &[f32; 3]) -> Self;
 }
 
 ///image type provides unified operation interface
@@ -17,7 +17,7 @@ pub struct Image<P: PixelType> {
 
 impl<P: PixelType> Image<P> {
     pub fn new(w: usize, h: usize) -> Self {
-        let data = vec![P::from(&[0; 3]); w * h];
+        let data = vec![P::from(&[0.; 3]); w * h];
         Image { raw: data, w, h }
     }
 

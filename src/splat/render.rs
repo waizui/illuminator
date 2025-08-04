@@ -1,9 +1,10 @@
 use crate::{
     core::{matrix::Matrix, tensor::Mat1x3f, vec::Vector},
-    prelude::{BVH, Vec3f},
-    raycast::Ray,
+    img::{Image, PixelType},
+    prelude::*,
     splat::{gaussian::Gaussian, io::read_ply},
 };
+
 use anyhow::Result;
 use num_traits::{One, Zero};
 use rayon::prelude::*;
@@ -29,6 +30,42 @@ impl SplatsRenderer {
         bvh.build(Self::BVH_NODE_SIZE + 1, true);
 
         Ok(SplatsRenderer { bvh })
+    }
+
+    pub fn render<P: PixelType>(&self, cam: &Camera, (w, h): (usize, usize)) -> Image<P> {
+        let total_pixs = w * h;
+        let finished_pixs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let arc_finished_pixs = finished_pixs.clone();
+
+        let inspector = std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+                let current = arc_finished_pixs.load(std::sync::atomic::Ordering::Relaxed);
+                if current >= total_pixs {
+                    println!("\rProgress: ({total_pixs}/{total_pixs})");
+                    break;
+                }
+
+                print!("\rProgress: ({current}/{total_pixs})");
+                std::io::Write::flush(&mut std::io::stdout()).unwrap();
+            }
+        });
+
+        let mut img: Image<P> = Image::new(w, h);
+        img.data_mut()
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, pix)| {
+                let (iw, ih) = (i % w, i / w);
+                // let ray = cam.gen_ray_orthogonal((iw, ih), (0., 0.), (w, h), 1.5);
+                let ray = cam.gen_ray((iw, ih), (0., 0.), (w, h));
+                let col = self.trace(&ray);
+                *pix = P::from(&[col[0], col[1], col[2]]);
+                finished_pixs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            });
+
+        inspector.join().unwrap();
+        img
     }
 
     ///TODO: clip for rendering
@@ -123,41 +160,26 @@ impl SplatsRenderer {
 
 #[test]
 fn test_trace_splats() {
-    use crate::img::*;
     use crate::render::camera::Camera;
     use crate::{prelude::Vec3f, splat::render::SplatsRenderer};
-    use image::{Rgb, RgbImage};
-    use rayon::prelude::*;
     use std::path::Path;
 
     // let path = "./target/bicycle.ply";
     let path = "./target/obj_011.ply";
     // let path = "./target/background.ply";
-    let gs = SplatsRenderer::from_ply(path).unwrap();
+    let rdr = SplatsRenderer::from_ply(path).unwrap();
 
-    let (w, h) = (32, 32);
-    // let (w, h) = (128, 128);
+    // let (w, h) = (32, 32);
+    let (w, h) = (128, 128);
     // let (w, h) = (512, 512);
 
     println!("test tace {w}x{h}");
-
-    let mut img: Image<Rgb<u8>> = Image::new(w, h);
 
     let cam_pos = Vec3f::vec([5., 0., 0.]);
     let forward = Vec3f::zero() - cam_pos;
     let cam = Camera::new(cam_pos, forward, 30., 0.25, 4.);
 
-    img.data_mut()
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, pix)| {
-            let (iw, ih) = (i % w, i / w);
-            // let ray = cam.gen_ray_orthogonal((iw, ih), (0., 0.), (w, h), 1.5);
-            let ray = cam.gen_ray((iw, ih), (0., 0.), (w, h));
-            let col = gs.trace(&ray);
-            let col = col * 255.;
-            *pix = Rgb([col[0] as u8, col[1] as u8, col[2] as u8]);
-        });
+    let img = rdr.render(&cam, (w, h));
 
     let fname = Path::new(path).file_stem().unwrap().to_str().unwrap();
     let rgbimg = RgbImage::from(img);

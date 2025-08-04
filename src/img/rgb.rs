@@ -2,8 +2,11 @@ use crate::img::*;
 use image::{Rgb, RgbImage};
 
 impl PixelType for Rgb<u8> {
-    fn from(c: &[u8; 3]) -> Self {
-        Rgb(*c)
+    fn from(c: &[f32; 3]) -> Self {
+        let r = (c[0] * 255.).clamp(0., 255.) as u8;
+        let g = (c[1] * 255.).clamp(0., 255.) as u8;
+        let b = (c[2] * 255.).clamp(0., 255.) as u8;
+        Rgb([r, g, b])
     }
 }
 
