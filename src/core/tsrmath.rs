@@ -8,6 +8,8 @@ pub trait TensorMath<T: TensorNum + Float, const N: usize> {
     fn min(&self, other: Self) -> Self;
 
     fn max(&self, other: Self) -> Self;
+
+    fn abs(&self) -> Self;
 }
 
 impl<T, const N: usize> TensorMath<T, N> for Tensor<T, N>
@@ -16,7 +18,6 @@ where
 {
     fn exp(&self) -> Self {
         let raw: [T; N] = std::array::from_fn(|i| self.raw[i].exp());
-
         Tensor {
             raw,
             shape: self.shape,
@@ -47,6 +48,14 @@ where
             self.raw[i]
         });
 
+        Tensor {
+            raw,
+            shape: self.shape,
+        }
+    }
+
+    fn abs(&self) -> Self {
+        let raw: [T; N] = std::array::from_fn(|i| self.raw[i].abs());
         Tensor {
             raw,
             shape: self.shape,

@@ -31,6 +31,7 @@ impl SplatsRenderer {
         Ok(SplatsRenderer { bvh })
     }
 
+    ///TODO: clip for rendering
     pub fn trace(&self, ray: &Ray) -> Vec3f {
         const T_MIN: f32 = 1e-5;
         const ALPHA_MIN: f32 = 4e-2;
@@ -123,39 +124,36 @@ impl SplatsRenderer {
 #[test]
 fn test_trace_splats() {
     use crate::img::*;
-    use crate::{prelude::Vec3f, raycast::Ray, splat::render::SplatsRenderer};
+    use crate::render::camera::Camera;
+    use crate::{prelude::Vec3f, splat::render::SplatsRenderer};
     use image::{Rgb, RgbImage};
     use rayon::prelude::*;
     use std::path::Path;
 
-    let path = "./target/bicycle.ply";
-    // let path = "./target/obj_011.ply";
+    // let path = "./target/bicycle.ply";
+    let path = "./target/obj_011.ply";
     // let path = "./target/background.ply";
     let gs = SplatsRenderer::from_ply(path).unwrap();
 
-    // let (w, h) = (1, 1);
-    let (w, h) = (128, 128);
-    // let (w, h) = (512, 512);
+    // let (w, h) = (2, 2);
+    // let (w, h) = (128, 128);
+    let (w, h) = (512, 512);
 
     println!("test tace {w}x{h}");
 
     let mut img: Image<Rgb<u8>> = Image::new(w, h);
+
+    let cam_pos = Vec3f::vec([5., 0., 0.]);
+    let forward = Vec3f::zero() - cam_pos;
+    let cam = Camera::new(cam_pos, forward, 30., 0.25, 4.);
 
     img.data_mut()
         .par_iter_mut()
         .enumerate()
         .for_each(|(i, pix)| {
             let (iw, ih) = (i % w, i / w);
-            // let (lw, ly) = (3., 3.);
-            let (lw, ly) = (2., 2.);
-            let (x, y) = (
-                iw as f32 * lw / (w - 1) as f32,
-                (h - ih) as f32 * ly / (h - 1) as f32,
-            );
-
-            let org = Vec3f::vec([-5., 0.5 + x - lw / 2., 0.5 + y - ly / 2.]);
-            let dir = Vec3f::vec([1., 0., 0.]);
-            let ray = Ray::new(org, dir);
+            // let ray = cam.gen_ray_orthogonal((iw, ih), (0., 0.), (w, h), 1.5);
+            let ray = cam.gen_ray((iw, ih), (0., 0.), (w, h));
             let col = gs.trace(&ray);
             let col = col * 255.;
             *pix = Rgb([col[0] as u8, col[1] as u8, col[2] as u8]);
