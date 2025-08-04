@@ -184,11 +184,11 @@ const PLY_PROPERTIES: &[&str] = &[
 ];
 
 #[test]
-fn test_ply_read() {
-    let path = "./target/obj_011.ply";
+fn test_ply_read() -> Result<()> {
+    let path = "./target/bicycle.ply";
 
-    let splats0 = read_ply(path).unwrap();
-    let splats1 = read_ply(path).unwrap();
+    let splats0 = read_ply(path)?;
+    let splats1 = read_ply(path)?;
 
     let same = splats0.iter().zip(splats1.iter()).all(|(s0, s1)| {
         s0.opacity == s1.opacity
@@ -199,4 +199,5 @@ fn test_ply_read() {
     });
 
     assert!(same);
+    Ok(())
 }
