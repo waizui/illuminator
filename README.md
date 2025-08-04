@@ -9,7 +9,7 @@ Illuminator is a simple yet powerful rendering tool.
 ### Use as cli
 
 ```Bash
-cargo run --bin illu --release -- -e 3dgs --path ".\target\bicycle.ply" --res "1024x1024"
+./illu -e 3dgs --path "..\bicycle.ply" --res "256x256"
 ```
 
 ### Use as lib
