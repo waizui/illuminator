@@ -159,31 +159,26 @@ impl SplatsRenderer {
 }
 
 #[test]
-fn test_trace_splats() {
-    use crate::render::camera::Camera;
-    use crate::{prelude::Vec3f, splat::render::SplatsRenderer};
+fn test_trace_splats() -> Result<()> {
+    use crate::{prelude::*, splat::render::SplatsRenderer};
     use std::path::Path;
 
-    // let path = "./target/bicycle.ply";
-    let path = "./target/obj_011.ply";
-    // let path = "./target/background.ply";
-    let rdr = SplatsRenderer::from_ply(path).unwrap();
+    let ply_path = "./target/bicycle.ply";
+    let rdr = SplatsRenderer::from_ply(ply_path)?;
 
-    // let (w, h) = (32, 32);
-    let (w, h) = (128, 128);
-    // let (w, h) = (512, 512);
+    let mut cam = Camera::default();
+    cam.pos = Vec3f::vec([-3., 0., 0.]);
+    cam.look_at(Vec3f::zero());
 
-    println!("test tace {w}x{h}");
-
-    let cam_pos = Vec3f::vec([5., 0., 0.]);
-    let forward = Vec3f::zero() - cam_pos;
-    let cam = Camera::new(cam_pos, forward, 30., 0.25, 4.);
-
+    let (w, h) = (256, 256);
     let img = rdr.render(&cam, (w, h));
 
-    let fname = Path::new(path).file_stem().unwrap().to_str().unwrap();
+    let png_path = Path::new(ply_path)
+        .with_extension("png")
+        .to_string_lossy()
+        .into_owned();
+
     let rgbimg = RgbImage::from(img);
-    rgbimg
-        .save(format!("./target/{fname}_trace.png"))
-        .expect("Failed to save BVH example image");
+    rgbimg.save(png_path).expect("Failed to save trace image");
+    Ok(())
 }

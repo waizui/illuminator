@@ -39,7 +39,7 @@ pub fn bvh_example(save_path: Option<&str>) {
             }
         });
 
-    let save_path = &path_or_default(save_path, "bvh_examples.png");
+    let save_path = &path_or_default(save_path, "bvh_example.png");
 
     let rgbimg = RgbImage::from(img);
     rgbimg
@@ -55,7 +55,7 @@ pub fn gaussian_splatting_example(ply_path: Option<&str>, (w, h): (usize, usize)
     use std::path::Path;
     use std::time::Instant;
 
-    println!("Running BVH example...");
+    println!("Running Gaussian Splatting tracing example...");
 
     let read_path = &path_or_default(ply_path, "point_cloud.ply");
     let rdr = SplatsRenderer::from_ply(read_path);
@@ -81,9 +81,9 @@ pub fn gaussian_splatting_example(ply_path: Option<&str>, (w, h): (usize, usize)
 
     println!("Trace resolution: {w}x{h}");
 
-    let cam_pos = Vec3f::vec([5., 0., 0.]);
+    let cam_pos = Vec3f::vec([-3., 0., 0.]);
     let forward = Vec3f::zero() - cam_pos;
-    let cam = Camera::new(cam_pos, forward, 30., 0.25, 4.);
+    let cam = Camera::new(cam_pos, forward, 60., 0.25, 4.);
 
     let start = Instant::now();
 
