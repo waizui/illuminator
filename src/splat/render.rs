@@ -14,8 +14,8 @@ pub struct SplatsRenderer {
 }
 
 impl SplatsRenderer {
-    pub const CHUNK_SIZE: usize = 16; // same as node size for k-closest finding
-    pub const BVH_NODE_SIZE: usize = 32;
+    pub const CHUNK_SIZE: usize = 64; 
+    pub const BVH_NODE_SIZE: usize = 256;
 
     pub fn from_ply(path: &str) -> Result<Self> {
         let input_gs = read_ply(path)?;
