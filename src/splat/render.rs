@@ -14,8 +14,8 @@ pub struct SplatsRenderer {
 }
 
 impl SplatsRenderer {
-    pub const CHUNK_SIZE: usize = 64;
-    pub const BVH_NODE_SIZE: usize = 64;
+    pub const CHUNK_SIZE: usize = 16; // same as node size for k-closest finding
+    pub const BVH_NODE_SIZE: usize = 32;
 
     pub fn from_ply(path: &str) -> Result<Self> {
         let input_gs = read_ply(path)?;
@@ -69,38 +69,66 @@ impl SplatsRenderer {
     }
 
     ///TODO: clip for rendering
-    pub fn trace(&self, ray: &Ray) -> Vec3f {
+    pub fn trace(&self, in_ray: &Ray) -> Vec3f {
         const T_MIN: f32 = 1e-5;
         const ALPHA_MIN: f32 = 4e-2;
 
         let mut col = Vec3f::zero();
         let mut tsm = 1.; // transmittance
+        let mut buf;
 
-        let mut hit_count = 0;
-        let mut buf = [(0, 0.); Self::CHUNK_SIZE];
+        let mut ray = in_ray.clone();
 
-        self.bvh.mult_raycast(ray, |_, hit, i| {
-            buf[hit_count] = (i, hit.t);
-            hit_count += 1;
-            if hit_count == Self::CHUNK_SIZE {
-                let (chunk_col, chunk_tsm) = self.chunk_color(&mut buf, ray, tsm, T_MIN, ALPHA_MIN);
+        loop {
+            let mut end_trace = false;
+            buf = [(0, f32::INFINITY); Self::CHUNK_SIZE];
+
+            self.bvh.any_raycast(&ray, |_, hit, prim_i| {
+                let mut cur_i = prim_i;
+                let mut cur_t = hit.t;
+
+                if hit.t < buf[Self::CHUNK_SIZE - 1].1 {
+                    for k in 0..Self::CHUNK_SIZE {
+                        if cur_t < buf[k].1 {
+                            let (tmp_i, tmp_t) = buf[k];
+                            buf[k] = (cur_i, cur_t);
+                            cur_i = tmp_i;
+                            cur_t = tmp_t;
+                        }
+                    }
+                    // skip hit except farthest one
+                    if hit.t < buf[Self::CHUNK_SIZE - 1].1 {
+                        return true;
+                    }
+                }
+
+                false
+            });
+
+            // process chunk hits
+            let mut max_t = 0f32;
+            for (_, t) in buf.iter() {
+                max_t = max_t.max(*t);
+                if *t == f32::INFINITY {
+                    end_trace = true;
+                    break;
+                }
+
+                let (chunk_col, chunk_tsm) = self.chunk_color(&buf, &ray, tsm, T_MIN, ALPHA_MIN);
                 col = col + chunk_col;
                 tsm = chunk_tsm;
 
                 if tsm < T_MIN {
-                    return true;
+                    end_trace = true;
+                    break;
                 }
-
-                // restore chunk state
-                hit_count = 0;
             }
-            // continue tracing
-            false
-        });
 
-        if hit_count < Self::CHUNK_SIZE {
-            let (chunk_col, _) = self.chunk_color(&mut buf, ray, tsm, T_MIN, ALPHA_MIN);
-            col = col + chunk_col;
+            if end_trace {
+                break;
+            }
+
+            ray.marching(max_t);
         }
 
         col
@@ -108,14 +136,12 @@ impl SplatsRenderer {
 
     fn chunk_color(
         &self,
-        buf: &mut [(usize, f32)],
+        buf: &[(usize, f32)],
         ray: &Ray,
         mut tsm: f32,
         t_min: f32,
         a_min: f32,
     ) -> (Vec3f, f32) {
-        buf.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-
         let mut col = Vec3f::zero();
         for &(i, _) in buf.iter() {
             let splat = self.get_gaussian(i);

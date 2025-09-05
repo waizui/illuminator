@@ -95,10 +95,14 @@ impl<T: Primitive> BVH<T> {
         hit
     }
 
-    pub fn mult_raycast<F>(&self, ray: &Ray, mut anyhit: F)
+    /// F (ray,hit, primitve index) -> if skip
+    /// return cloest hit in not skiiped hits
+    pub fn any_raycast<F>(&self, ray: &Ray, mut anyhit: F) -> Option<(Hit, usize)>
     where
         F: FnMut(&Ray, Hit, usize) -> bool,
     {
+        let mut hit: Option<(Hit, usize)> = None;
+
         let mut cur_node_i = 0;
         let mut to_visit_i = 0;
         let mut nodes_to_visit = [0; 64];
@@ -112,9 +116,10 @@ impl<T: Primitive> BVH<T> {
                     // cast ray with primitives
                     for i in 0..node.nprimitives {
                         if let Some(hit_p) = self.primitives[node.offset + i].raycast(ray) {
-                            if anyhit(ray, hit_p, node.offset + i) {
-                                // terminate signal
-                                return;
+                            // if not skip use hit t limit tmax
+                            if !anyhit(ray, hit_p, node.offset + i) {
+                                ray.t_max = hit_p.t;
+                                hit = Some((hit_p, node.offset + i));
                             }
                         }
                     }
@@ -146,6 +151,8 @@ impl<T: Primitive> BVH<T> {
                 to_visit_i -= 1;
             }
         }
+
+        hit
     }
 }
 
@@ -281,7 +288,7 @@ fn test_bvh_cast() {
     let diag_ray = Ray::new(Vec3f::vec([0.; 3]), Vec3f::vec([1.; 3]));
 
     let mut hits = 0;
-    bvh.mult_raycast(&diag_ray, |_r, _hit, _i| {
+    bvh.any_raycast(&diag_ray, |_r, _hit, _i| {
         hits += 1;
         if hits == 3 {
             return true;

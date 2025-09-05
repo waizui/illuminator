@@ -26,15 +26,14 @@ impl Ray {
     pub fn segment(org: Vec3f, dir: Vec3f, t_max: f32) -> Ray {
         Ray { org, dir, t_max }
     }
-    
+
     /// move ray alone direction by scaling factor t
     pub fn marching(&mut self, t: f32) {
         self.org = self.org + self.dir * t;
     }
 }
 
-//TODO: hit multiple
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Hit {
     pub t: f32,
 }
