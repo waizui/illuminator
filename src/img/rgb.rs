@@ -10,7 +10,7 @@ impl PixelType for Rgb<u8> {
     }
 }
 
-impl From<RgbImage> for Image<Rgb<u8>> {
+impl From<RgbImage> for RawImage<Rgb<u8>> {
     fn from(value: RgbImage) -> Self {
         let (w, h) = (value.width() as usize, value.height() as usize);
         let size = w * h;
@@ -19,12 +19,12 @@ impl From<RgbImage> for Image<Rgb<u8>> {
             data.push(*p);
         }
 
-        Image { raw: data, w, h }
+        RawImage { raw: data, w, h }
     }
 }
 
-impl From<Image<Rgb<u8>>> for RgbImage {
-    fn from(value: Image<Rgb<u8>>) -> Self {
+impl From<RawImage<Rgb<u8>>> for RgbImage {
+    fn from(value: RawImage<Rgb<u8>>) -> Self {
         let mut img = RgbImage::new(value.w as u32, value.h as u32);
         img.pixels_mut()
             .enumerate()
@@ -38,7 +38,7 @@ fn test_image() {
     use image::Pixel;
     use image::RgbImage;
 
-    let mut img = Image::from(RgbImage::new(100, 100));
+    let mut img = RawImage::from(RgbImage::new(100, 100));
     assert_eq!(img[(49, 49)].0, [0; 3]);
 
     img[(49, 49)] = *Rgb::from_slice(&[1; 3]);
@@ -46,7 +46,7 @@ fn test_image() {
 
     assert_eq!(img[(49, 49)].0, [1; 3]);
 
-    let img2 = Image::from(RgbImage::new(100, 100));
+    let img2 = RawImage::from(RgbImage::new(100, 100));
     let img = img.stitch_hor(&img2);
 
     assert_eq!((img.w, img.h), (200, 100));

@@ -17,7 +17,7 @@ pub fn bvh_example(save_path: Option<&str>) {
     bvh.build(node_limit, true);
 
     let (w, h) = (512, 512);
-    let mut img: Image<Rgb<u8>> = Image::new(w, h);
+    let mut img: RawImage<Rgb<u8>> = RawImage::new(w, h);
 
     img.data_mut()
         .par_iter_mut()

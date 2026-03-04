@@ -1,6 +1,6 @@
 use crate::{
     core::{matrix::Matrix, tensor::Mat1x3f, vec::Vector},
-    img::{Image, PixelType},
+    img::{RawImage, PixelType},
     prelude::*,
     splat::{gaussian::Gaussian, io::read_ply},
 };
@@ -32,7 +32,7 @@ impl SplatsRenderer {
         Ok(SplatsRenderer { bvh })
     }
 
-    pub fn render<P: PixelType>(&self, cam: &Camera, (w, h): (usize, usize)) -> Image<P> {
+    pub fn render<P: PixelType>(&self, cam: &Camera, (w, h): (usize, usize)) -> RawImage<P> {
         let total_pixs = w * h;
         let finished_pixs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let arc_finished_pixs = finished_pixs.clone();
@@ -51,7 +51,7 @@ impl SplatsRenderer {
             }
         });
 
-        let mut img: Image<P> = Image::new(w, h);
+        let mut img: RawImage<P> = RawImage::new(w, h);
         img.data_mut()
             .par_iter_mut()
             .enumerate()

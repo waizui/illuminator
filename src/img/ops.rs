@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 
 use crate::img::*;
 
-impl<P> Index<(usize, usize)> for Image<P>
+impl<P> Index<(usize, usize)> for RawImage<P>
 where
     P: PixelType,
 {
@@ -13,7 +13,7 @@ where
     }
 }
 
-impl<P> IndexMut<(usize, usize)> for Image<P>
+impl<P> IndexMut<(usize, usize)> for RawImage<P>
 where
     P: PixelType,
 {
@@ -29,7 +29,7 @@ where
     fn stitch_hor(&self, other: &Self) -> Self;
 }
 
-impl<P> ImgOp<P> for Image<P>
+impl<P> ImgOp<P> for RawImage<P>
 where
     P: PixelType,
 {
@@ -38,7 +38,7 @@ where
         let (w1, h1) = other.shape();
         let (w, h) = (w0 + w1, h0.max(h1));
 
-        let mut img = Image::new(w, h);
+        let mut img = RawImage::new(w, h);
 
         img.raw.par_iter_mut().enumerate().for_each(|(ipix, pix)| {
             let x = ipix % w;
