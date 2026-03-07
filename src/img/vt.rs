@@ -1,3 +1,4 @@
+use anyhow::{Ok, Result, anyhow};
 use image::{DynamicImage, Rgb, RgbImage, imageops::FilterType};
 
 use crate::img::*;
@@ -7,10 +8,19 @@ pub struct VirtualTexture {
 }
 
 impl VirtualTexture {
-    pub fn new(mip_level: usize, img: &RawImage<Rgb<u8>>, min_wh: usize) -> Self {
+    pub fn new(mip_level: usize, img: &RawImage<Rgb<u8>>) -> Result<Self> {
+        const MIN_WH: usize = 64;
+
         let mut vt = VirtualTexture { mips: Vec::new() };
-        vt.gen_mipmaps(mip_level, img, min_wh);
-        vt
+        if !img.w.is_multiple_of(2) || !img.h.is_multiple_of(2) {
+            return Err(anyhow!(
+                "err: Can not create VirtualTexture with non-power-of-2 image"
+            ));
+        }
+
+        vt.gen_mipmaps(mip_level, img, MIN_WH);
+
+        Ok(vt)
     }
 
     fn gen_mipmaps(&mut self, level: usize, img: &RawImage<Rgb<u8>>, min_wh: usize) {
@@ -20,11 +30,12 @@ impl VirtualTexture {
         let mut cur_lever = level;
 
         while w > min_wh && h > min_wh && cur_lever > 0 {
-            w = (w / 2).max(1);
-            h = (h / 2).max(1);
-            cur_lever -= 1;
             let resized = self.resize(w, h, img);
             self.mips.push(resized);
+
+            w /= 2;
+            h /= 2;
+            cur_lever -= 1;
         }
     }
 
@@ -46,18 +57,17 @@ impl VirtualTexture {
 }
 
 #[test]
-fn testvt() {
+fn testvt() -> Result<()> {
     use image::RgbImage;
 
-    let test_img: RawImage<Rgb<u8>> = RawImage::checkerboard(512, 512, 32);
+    let test_img: RawImage<Rgb<u8>> = RawImage::checkerboard(512, 512, 32, &[0.; 3], &[1.; 3]);
+    let vt = VirtualTexture::new(3, &test_img)?;
 
-    let vt = VirtualTexture::new(3, &test_img, 64);
-
-    let mut mip_level = 1;
-    for mip in vt.mips {
+    for (i, mip) in vt.mips.into_iter().enumerate() {
         let rgb = RgbImage::from(mip);
-        rgb.save(format!("./target/vt_text_{mip_level}.png"))
+        rgb.save(format!("./target/vt_text_{i}.png"))
             .expect("test failed of virtual texture");
-        mip_level += 1;
     }
+
+    Ok(())
 }
