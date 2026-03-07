@@ -1,7 +1,5 @@
-use rayon::prelude::*;
-use std::ops::{Index, IndexMut};
-
 use crate::img::*;
+use std::ops::{Index, IndexMut};
 
 impl<P> Index<(usize, usize)> for RawImage<P>
 where
@@ -40,7 +38,7 @@ where
 
         let mut img = RawImage::new(w, h);
 
-        img.raw.par_iter_mut().enumerate().for_each(|(ipix, pix)| {
+        img.par_iter_pixel(|(ipix, pix)| {
             let x = ipix % w;
             let y = ipix / w;
 
