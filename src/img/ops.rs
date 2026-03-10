@@ -20,6 +20,14 @@ where
     }
 }
 
+impl<P: PixelType> Clone for RawImage<P> {
+    fn clone(&self) -> Self {
+        let mut img = RawImage::new(self.w, self.h);
+        img.par_iter_pixel(|(i, p)| *p = self.raw[i]);
+        img
+    }
+}
+
 pub trait ImgOp<P>
 where
     P: PixelType,
