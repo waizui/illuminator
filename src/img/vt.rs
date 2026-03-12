@@ -1,11 +1,8 @@
-use std::{
-    fs::{create_dir_all, remove_dir_all},
-    path::{self, Path},
-};
+use std::path::PathBuf;
 
 use crate::img::*;
 use anyhow::{Result, anyhow};
-use image::{DynamicImage, Rgb, RgbImage, imageops::FilterType};
+use image::{DynamicImage, ImageReader, Rgb, RgbImage, imageops::FilterType};
 use itertools::Itertools;
 
 pub fn ensure_pot(x: usize) -> Result<()> {
@@ -18,19 +15,47 @@ pub fn ensure_pot(x: usize) -> Result<()> {
     Ok(())
 }
 
-pub struct VirtualTexture {
+pub trait MipmapStreamer {
+    fn fetch(&self, mip: usize, page: usize) -> impl Future<Output = Result<RawImage<Rgb<u8>>>>;
+}
+
+pub struct DiskMipmapStreamer {
+    path: PathBuf,
+}
+
+impl DiskMipmapStreamer {
+    pub fn new(dir: &str) -> Self {
+        let path = PathBuf::from(dir);
+        DiskMipmapStreamer { path }
+    }
+}
+
+impl MipmapStreamer for DiskMipmapStreamer {
+    async fn fetch(&self, mip: usize, page: usize) -> Result<RawImage<Rgb<u8>>> {
+        let path = self.path.join(format!("{mip}_{page}.png"));
+        let img = tokio::task::spawn_blocking(move || -> Result<RawImage<Rgb<u8>>> {
+            Ok(RawImage::from(ImageReader::open(path)?.decode()?.to_rgb8()))
+        })
+        .await??;
+        Ok(img)
+    }
+}
+
+pub struct VirtualTexture<S: MipmapStreamer> {
     page_size: usize,
     virtual_page_axis: usize,
     physical_page_axis: usize,
     page_table: Vec<usize>,
     physcial_pages: Vec<RawImage<Rgb<u8>>>,
+    streamer: S,
 }
 
-impl VirtualTexture {
+impl<S: MipmapStreamer> VirtualTexture<S> {
     pub fn new(
         page_size: usize,
         virtual_page_axis: usize,
         physical_page_axis: usize,
+        streamer: S,
     ) -> Result<Self> {
         ensure_pot(page_size)?;
         ensure_pot(virtual_page_axis)?;
@@ -42,6 +67,7 @@ impl VirtualTexture {
             physical_page_axis,
             page_table: vec![virtual_page_axis.pow(2)],
             physcial_pages: vec![RawImage::new(page_size, page_size); physical_page_axis.pow(2)],
+            streamer,
         };
 
         Ok(vt)
@@ -106,20 +132,26 @@ pub fn gen_mipmaps(
 #[test]
 fn testvt() -> Result<()> {
     use image::RgbImage;
-
-    if VirtualTexture::new(1, 3, 5).is_ok() {
-        return Err(anyhow!("test failed"));
+    use std::{
+        fs::{create_dir_all, remove_dir_all},
+        path::Path,
     };
 
     let save_path = "./target/vt_test/";
+    if VirtualTexture::new(1, 3, 5, DiskMipmapStreamer::new(save_path)).is_ok() {
+        return Err(anyhow!("test failed"));
+    };
+
     if Path::new(save_path).exists() {
         remove_dir_all(save_path)?;
     }
     create_dir_all(save_path)?;
 
     let page_size = 64;
+    let virtual_size = 256;
 
-    let test_img: RawImage<Rgb<u8>> = RawImage::checkerboard(256, 256, 16, &[0.; 3], &[1.; 3]);
+    let test_img: RawImage<Rgb<u8>> =
+        RawImage::checkerboard(virtual_size, virtual_size, 16, &[0.; 3], &[1.; 3]);
 
     let mipmaps = gen_mipmaps(&test_img, page_size)?;
 
@@ -134,10 +166,24 @@ fn testvt() -> Result<()> {
                 *pix = Rgb([r, g, b]);
             });
             let rgb = RgbImage::from(mip);
-            rgb.save(format!("{save_path}vt_text_{i}_{j}.png"))
+            rgb.save(format!("{save_path}{i}_{j}.png"))
                 .expect("test failed of virtual texture");
         }
     }
+
+    let rt = tokio::runtime::Builder::new_current_thread().build()?;
+    let imgs: Result<Vec<RawImage<Rgb<u8>>>> = rt.block_on(async {
+        let streamer = DiskMipmapStreamer::new(save_path);
+        let mut fetched = Vec::new();
+        for i in 0..3 {
+            fetched.push(streamer.fetch(i, 0).await?);
+        }
+        Ok(fetched)
+    });
+
+    assert_eq!(imgs?.len(), 3);
+
+    // let vt = VirtualTexture::new(page_size, virtual_size / page_size, 4, streamer);
 
     Ok(())
 }
