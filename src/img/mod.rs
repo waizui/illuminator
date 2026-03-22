@@ -34,7 +34,7 @@ impl<P: PixelType> RawImage<P> {
         &mut self.raw
     }
 
-    pub fn par_iter_pixel<OP>(&mut self, op: OP)
+    pub fn par_iter_pixels<OP>(&mut self, op: OP)
     where
         OP: Fn((usize, &mut P)) + Sync + Send,
     {
@@ -50,7 +50,7 @@ impl<P: PixelType> RawImage<P> {
         col2: &[f32; 3],
     ) -> Self {
         let mut img: RawImage<P> = RawImage::new(w, h);
-        img.par_iter_pixel(|(i, pix)| {
+        img.par_iter_pixels(|(i, pix)| {
             let r = i / w;
             let c = i - r * w;
             if (r / squre_size + c / squre_size).is_multiple_of(2) {

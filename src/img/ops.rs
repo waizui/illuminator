@@ -23,7 +23,7 @@ where
 impl<P: PixelType> Clone for RawImage<P> {
     fn clone(&self) -> Self {
         let mut img = RawImage::new(self.w, self.h);
-        img.par_iter_pixel(|(i, p)| *p = self.raw[i]);
+        img.par_iter_pixels(|(i, p)| *p = self.raw[i]);
         img
     }
 }
@@ -46,7 +46,7 @@ where
 
         let mut img = RawImage::new(w, h);
 
-        img.par_iter_pixel(|(ipix, pix)| {
+        img.par_iter_pixels(|(ipix, pix)| {
             let x = ipix % w;
             let y = ipix / w;
 
